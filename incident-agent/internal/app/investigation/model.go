@@ -204,7 +204,8 @@ func (m *ModelDecider) ModelAudit() []ModelCall {
 	return calls
 }
 
-// RestoreAccounting configures a fresh decider with durable conservative charges.
+// RestoreAccounting configures a fresh decider with durable charges: settled usage
+// where the provider reported it, the full reservation everywhere else.
 // The reservation hook must durably acknowledge before Provider.Complete.
 func (m *ModelDecider) RestoreAccounting(calls []ModelCall, reserve func(context.Context, ModelCall) error) error {
 	m.mu.Lock()
@@ -214,7 +215,9 @@ func (m *ModelDecider) RestoreAccounting(calls []ModelCall, reserve func(context
 	}
 	m.reserve = reserve
 	for _, call := range calls {
-		call.Charged = max(call.Reserved, call.Charged)
+		if call.Usage == nil {
+			call.Charged = max(call.Reserved, call.Charged)
+		}
 		m.charged += call.Charged
 		m.exhausted = m.exhausted || call.Status == "RESERVATION_EXCEEDED"
 		m.calls = append(m.calls, call)

@@ -32,9 +32,10 @@ var (
 	ErrUnknownSchema = errors.New("run state has unknown schema version")
 )
 
-// Budget reports durable reservations, which may exceed actual provider usage.
+// Budget reports durable charges: settled usage where a provider reported it,
+// the full reservation for failed or unknown calls.
 type Budget struct {
-	ReservedTokens  int `json:"reserved_tokens"`
+	ChargedTokens   int `json:"charged_tokens"`
 	ModelCalls      int `json:"model_calls"`
 	BackendRequests int `json:"backend_requests"`
 	ResultBytes     int `json:"result_bytes"`
@@ -149,7 +150,7 @@ func Project(reply runstate.Reply) (Result, error) {
 	result := Result{
 		Schema: ResultSchema, ID: state.ID, Status: state.Status, CancelRequested: state.Cancelled,
 		CreatedAt: time.UnixMilli(state.Created).UTC(), DeadlineAt: time.UnixMilli(state.Deadline).UTC(),
-		Budget:     Budget{ReservedTokens: state.Tokens, ModelCalls: state.ModelCalls, BackendRequests: state.Requests, ResultBytes: state.ResultBytes},
+		Budget:     Budget{ChargedTokens: state.Tokens, ModelCalls: state.ModelCalls, BackendRequests: state.Requests, ResultBytes: state.ResultBytes},
 		Operations: []OperationSummary{}, Evidence: []EvidenceSummary{},
 	}
 	for id, op := range state.Operations {

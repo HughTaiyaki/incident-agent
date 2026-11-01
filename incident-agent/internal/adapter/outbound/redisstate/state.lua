@@ -150,6 +150,13 @@ else
                     if not op or op.status~='IN_FLIGHT' or op.epoch~=s.epoch then return reply('CONFLICT') end
                     if type(cmd.result)~='string' then return reply('INVALID') end
                     if s.result_bytes+#cmd.result>2097152 then return reply('CAPACITY') end
+                    -- Reported usage settles a model call. Absent or unknown usage keeps the full charge.
+                    local settled=cmd.settled or 0
+                    if settled~=0 then
+                        if op.kind~='model' or not integer(settled,1,op.cost) then return reply('INVALID') end
+                        s.tokens=s.tokens-(op.cost-settled)
+                        op.settled=settled
+                    end
                     op.result=cmd.result; op.status='COMMITTED'; op.finished=now
                     s.result_bytes=s.result_bytes+#cmd.result
                 end

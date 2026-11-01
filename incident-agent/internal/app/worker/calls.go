@@ -66,7 +66,11 @@ func (s *session) audits() []investigation.ModelCall {
 				call = saved.Call
 			}
 		}
-		call.Charged = max(call.Charged, op.Cost)
+		if op.Status == "COMMITTED" && op.Settled > 0 {
+			call.Charged = op.Settled
+		} else {
+			call.Charged = max(call.Charged, op.Cost)
+		}
 		if op.Status != "COMMITTED" {
 			call.Status = "UNKNOWN"
 		}
@@ -141,14 +145,20 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	case err != nil:
 		saved.Code = "UNAVAILABLE"
 	}
-	// Persistent accounting deliberately never refunds actual usage below reserve.
-	saved.Call.Charged = max(call.Charged, call.Reserved)
+	// Only usage the provider reported within the reservation settles it. Anything
+	// less certain, including a commit that never lands, stays charged in full.
+	settled := 0
+	if call.Usage != nil && call.Charged <= call.Reserved {
+		settled = call.Charged
+	} else {
+		saved.Call.Charged = max(call.Charged, call.Reserved)
+	}
 	data, encodeErr := json.Marshal(saved)
 	if encodeErr != nil {
 		return nil, investigation.ErrPersistence
 	}
 	s.mu.Lock()
-	commitErr := s.command(d.run, runstate.Command{Action: "commit", Operation: id, Result: string(data)})
+	commitErr := s.command(d.run, runstate.Command{Action: "commit", Operation: id, Result: string(data), Settled: settled})
 	s.mu.Unlock()
 	if commitErr != nil {
 		return nil, commitErr

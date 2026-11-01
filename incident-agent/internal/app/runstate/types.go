@@ -21,6 +21,8 @@ type Command struct {
 	Input      string `json:"input"`
 	Result     string `json:"result"`
 	Report     string `json:"report"`
+	// Settled is a model call's reported usage; zero keeps the full reservation.
+	Settled int `json:"settled"`
 }
 
 // State is the persistence snapshot, distinct from the investigation Run schema.
@@ -57,6 +59,7 @@ type Operation struct {
 	Started  int64  `json:"started"`
 	Finished int64  `json:"finished"`
 	Result   string `json:"result"`
+	Settled  int    `json:"settled"`
 }
 
 // Reply preserves protocol codes. In particular ALREADY is not permission to
