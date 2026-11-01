@@ -16,6 +16,8 @@
 
 Incident 输入：alert_id、service、environment、started_at、summary、initial_window_minutes；告警来源另记 prometheus/manual。自动来源由服务端规范化为 fingerprint 与 episode_id，alert_id 采用 episode_id；manual 使用请求幂等键。tenant/角色由服务端身份取得，初版固定单租户。POST 最大 16KiB，summary 最多 2,000 字符。scope 不受用户摘要或遥测文本扩权。
 
+当前实现是下表的手动入口子集，见 [API 指南](../development/http-api.md)；其余为目标设计。
+
 | 目标接口 | 行为 |
 | --- | --- |
 | POST /v1/incidents | 按 tenant＋source＋alert_id 幂等创建 Incident/首个 Run，202 返回 ID |

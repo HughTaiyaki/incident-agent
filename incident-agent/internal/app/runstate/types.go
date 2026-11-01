@@ -71,6 +71,11 @@ type Reply struct {
 	Now int64 `json:"now"`
 }
 
+// Heartbeater is implemented by stores that can publish worker liveness.
+type Heartbeater interface {
+	Heartbeat(ctx context.Context, owner string) error
+}
+
 // Store atomically executes commands and discovers bounded ready/expired candidates.
 type Store interface {
 	Execute(context.Context, Command) (Reply, error)

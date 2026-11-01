@@ -27,7 +27,7 @@ state 无法解析或 ID 不符返回 CORRUPT，schema 不是 1 返回 UNKNOWN_S
 | claim | owner | 排队或租约到期才可领取；epoch 和 version 递增，15 秒租约；未完成操作标 UNKNOWN。state 不存在时返回 NOT_FOUND 并清理残留索引条目，释放其占用的名额 |
 | renew | owner、epoch | 必须仍持有有效租约；只续租，不改业务 version；调用方每 5 秒续租 |
 | begin | owner、epoch、version、operation、kind、cost、input | 原子预留并记录 IN_FLIGHT；tool 消耗 0 个实际请求，query 消耗 1 个；input 为已校验的冻结调用参数字符串（≤64KiB） |
-| commit | owner、epoch、version、operation、result | 当前 epoch 的 IN_FLIGHT 才能提交；结果与状态原子保存 |
+| commit | owner、epoch、version、operation、result，可选 settled | 当前 epoch 的 IN_FLIGHT 才能提交；结果与状态原子保存。settled 为模型调用的实际用量（1 到预留额），差额退回；缺省保持全额，非模型操作传入返回 INVALID |
 | checkpoint | owner、epoch、version、checkpoint（≤3MiB） | 原子保存当前执行快照 |
 | cancel | 无 | READY 立即取消；RUNNING 置标志并改变 version，阻止后续调用 |
 | complete | owner、epoch、version、report | 正常完成保存报告；取消或到期仅确定性终结，丢弃传入报告 |
@@ -39,7 +39,7 @@ ID、owner、operation 为 1–128 字节字母数字、下划线或连字符。
 - Begin 的 OK 才允许首次发起外部请求；ALREADY 表示之前已预留，**不能据此再发请求**。重复 operation 的 kind/cost/input 不同为 CONFLICT。断连时先读回，不盲目重试外部调用。
 - 接管递增 epoch；旧 Worker 的 Renew/Commit/Complete 被 FENCED。UNKNOWN 仍消耗预算，不能提交迟到结果。当前不自动重试 UNKNOWN；后续 Harness 必须定义新 attempt 及次数限制。
 - Commit 重放同结果返回 ALREADY，不重复增加 version/结果字节；不同结果返回 CONFLICT。终态报告不可覆盖。
-- 存储只做保守额度：模型合计 24,000、最多 12 次，查询最多 16 次，每个实际请求扣 1。当前不退 usage 差额；报告预留、阶段/决策次数、输入估算仍须由后续 Harness 在 Begin 前校验，不能只依赖存储总额。
+- 存储只做保守额度：模型合计 24,000、最多 12 次，查询最多 16 次，每个实际请求扣 1。未提交或 UNKNOWN 的调用不退还；报告预留、阶段/决策次数、输入估算仍须由后续 Harness 在 Begin 前校验，不能只依赖存储总额。
 - 操作结果合计 ≤2MiB，报告 ≤64KiB，checkpoint ≤3MiB，编码后的完整状态 ≤7MiB；参数和状态先编码再写。Key 类型在第一次写入前检查，避免 WRONGTYPE 导致可预见的部分更新。OOM、主机崩溃等仍不是数据库回滚保证。
 - result/report/request/input 是受信任应用写入的字符串；脚本不验证证据引用、脱敏或报告语义。接线时仍必须调用现有 Guard，不能把脚本当公共 API。
 - 当前同一 JSON string 保存状态、checkpoint、调用审计和操作结果，尚无独立 Evidence、Incident 去重和 events Stream。不要据此实现 SSE 或宣称与完整 §7 全部兼容。
@@ -60,6 +60,7 @@ AOF everysec 的重启读回测试不代表主机故障零丢失；此次是正�
 - 关闭自动命令重试、维护通知和 CLIENT SETINFO。每次发送固定 EVAL，不使用 EVALSHA fallback；Key 由内部 namespace/id 构造。
 - `Reply.Code` 保留 OK/ALREADY/CONFLICT/FENCED 等业务结果，调用方必须检查；不能仅以 Go error==nil 判定允许外部调用。
 - 发出后出错返回 ErrUnavailable；可能已提交，不包含原始 Redis 错误正文或凭据。deadline/cancel 可通过 errors.Is 检查。下一步先 read 核对状态；传入前已取消则直接返回 context 错误。
+- `Heartbeat` 写入 15 秒过期的 `<namespace>:worker:heartbeat`，`Readiness` 返回固定原因代码，供 [HTTP API](http-api.md) 使用。
 - Worker 已增加扫描与续租；客户端本身仍不自动重试。持久 CLI 的配置和完整限制见 Worker 指南。
 
 客户端集成测试复用临时 Redis，覆盖结果保存、UNKNOWN 接管、跨命名空间隔离、超时结果不确定及后续读取、重建客户端后的 AOF 读回。`make test-redis` 同时运行脚本和客户端测试。

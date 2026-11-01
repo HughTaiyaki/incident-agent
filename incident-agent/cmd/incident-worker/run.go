@@ -127,7 +127,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return fail(err)
 	}
 	defer provider.Close()
-	providerID := telemetry.Hash([]byte(endpoint))
+	providerID := worker.ProviderIdentity(endpoint)
 	if *mode == "enqueue" {
 		f, err := os.Open(*requestPath)
 		if err != nil {
@@ -224,7 +224,7 @@ func openSource(live bool, fixturePath string) (telemetrySource, error) {
 		return telemetrySource{}, err
 	}
 	// The harness narrows each query to the job's request before it reaches the client.
-	return telemetrySource{telemetryID: telemetry.Hash([]byte(prometheus + "\n" + loki + "\n" + jaeger)), close: client.Close, querier: func(telemetry.Policy) (investigation.Querier, error) {
+	return telemetrySource{telemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), close: client.Close, querier: func(telemetry.Policy) (investigation.Querier, error) {
 		return client, nil
 	}}, nil
 }

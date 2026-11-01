@@ -26,6 +26,8 @@ type Job struct {
 	FixtureDigest string                `json:"fixture_digest"`
 	// TelemetryID identifies the live backends; a job uses it or FixtureDigest, never both.
 	TelemetryID string `json:"telemetry_id,omitempty"`
+	// InputDigest identifies an API submission, so a retry can be told from a different request.
+	InputDigest string `json:"input_digest,omitempty"`
 	ProviderID  string `json:"provider_id"`
 }
 
@@ -46,6 +48,9 @@ const MaxActiveLimit = 1024
 // ErrOverloaded means admission refused a new run and nothing was written.
 // Callers should retry later with the same ID rather than treat it as a failure of the run.
 var ErrOverloaded = errors.New("run admission overloaded")
+
+// errRunExists means the run ID is taken; nothing was written.
+var errRunExists = errors.New("run already exists")
 
 // Enqueue creates a run with an immutable 180-second execution deadline, admitted
 // atomically against maxActive queued and running runs across the deployment.
@@ -70,6 +75,12 @@ func Enqueue(ctx context.Context, store runstate.Store, id string, job Job, maxA
 		return nil
 	case "OVER_CAPACITY", "OVER_MEMORY":
 		return fmt.Errorf("%w: %s", ErrOverloaded, reply.Code)
+	case "EXISTS", "CONFLICT":
+		return fmt.Errorf("%w: %s", errRunExists, reply.Code)
+	case "CORRUPT":
+		return ErrCorrupt
+	case "UNKNOWN_SCHEMA":
+		return ErrUnknownSchema
 	}
 	return fmt.Errorf("create rejected: %s", reply.Code)
 }
@@ -79,6 +90,11 @@ func Enqueue(ctx context.Context, store runstate.Store, id string, job Job, maxA
 func (w *Worker) Run(ctx context.Context) error {
 	if w.Store == nil || w.Owner == "" || w.Build == nil {
 		return investigation.ErrInvalidInput
+	}
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
+	if beat, ok := w.Store.(runstate.Heartbeater); ok {
+		go heartbeat(ctx, beat, w.Owner)
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -95,6 +111,22 @@ func (w *Worker) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+// heartbeat publishes liveness apart from run processing, which may take minutes.
+// A failed beat only makes readiness report the worker absent; storage errors that
+// matter stop the worker through its own commands.
+func heartbeat(ctx context.Context, beat runstate.Heartbeater, owner string) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		_ = beat.Heartbeat(ctx, owner)
+		select {
+		case <-ctx.Done():
+			return
 		case <-ticker.C:
 		}
 	}

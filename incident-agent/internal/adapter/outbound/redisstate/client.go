@@ -175,6 +175,38 @@ local a=redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now,'LIMIT',0,ARGV[1])
 local b=redis.call('ZRANGEBYSCORE',KEYS[2],'-inf',now,'LIMIT',0,ARGV[1])
 for _,v in ipairs(b) do table.insert(a,v) end; return a`
 
+// Heartbeat records a live worker. It expires on its own, so a crashed worker
+// stops counting without any cleanup.
+func (c *Client) Heartbeat(ctx context.Context, owner string) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	if err := c.redis.Set(ctx, c.namespace+":worker:heartbeat", owner, 15*time.Second).Err(); err != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Readiness returns fixed reason codes for what would stop a new run progressing;
+// none means ready. Redis detail is never included.
+func (c *Client) Readiness(ctx context.Context) []string {
+	if err := c.CheckPersistence(ctx); err != nil {
+		if errors.Is(err, ErrUnavailable) || errors.Is(err, ErrProtocol) {
+			return []string{"redis_unavailable"}
+		}
+		return []string{"redis_misconfigured"}
+	}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	alive, err := c.redis.Exists(ctx, c.namespace+":worker:heartbeat").Result()
+	if err != nil {
+		return []string{"redis_unavailable"}
+	}
+	if alive == 0 {
+		return []string{"worker_absent"}
+	}
+	return nil
+}
+
 // CheckPersistence rejects configurations that cannot meet the worker's declared
 // durability policy. CONFIG GET permission is required; errors fail closed.
 func (c *Client) CheckPersistence(ctx context.Context) error {

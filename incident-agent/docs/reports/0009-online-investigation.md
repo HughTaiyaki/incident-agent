@@ -1,6 +1,6 @@
 # 阶段 0009：在线持久调查改动报告
 
-日期：2026-11-01。对应[任务 0009](../../tasks/0009-online-investigation.md)与[生产路线 P2](../development/production-roadmap.md)。**本报告只覆盖本地模拟服务上的工程验证，不是真实后端或真实供应商的验收结果。**
+日期：2026-11-01。对应[任务 0009](../../tasks/0009-online-investigation.md)与[生产路线 P2](../development/production-roadmap.md)。**本报告覆盖本地模拟服务上的工程验证。** 之后在本机真实后端上的运行及发现的 Token 结算问题见 [0010 报告](0010-http-entry.md)；真实供应商仍未联调。
 
 ## 修改前后
 
@@ -56,7 +56,6 @@ Job 版本仍是 worker-v1，新增字段可选，已有 Run 可继续读取。
 
 ## 未验证与限制
 
-- 没有连接真实 Prometheus/Loki/Jaeger，模拟响应只覆盖 Adapter 测试已知的形状。
 - 没有调用真实供应商，兼容性、模型诊断质量和费用都未知。
 - 假名化不是匿名化：盐是 Run ID，能拿到 Run ID 的人可以穷举低熵 ID；Trace/Span ID、服务名和时间仍会发给模型。外发前需要操作员确认可接受。
 - 模型上下文只遮蔽字段值。操作员写在 Request.Summary 里的内容会原样外发。

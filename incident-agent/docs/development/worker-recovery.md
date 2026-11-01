@@ -53,6 +53,8 @@ export INCIDENT_JAEGER_URL=http://127.0.0.1:16686
 | 查询结果超出存储额度 | 证据记 `RESULT_TOO_LARGE`，不保存记录，Run 继续 |
 | Redis 错误 | Worker 退出，由监督进程重启，见第 3 节 |
 
+HTTP 入口见 [API 指南](http-api.md)；API 与 Worker 必须使用相同的模型和后端配置。`work` 常驻模式每 5 秒写一次心跳供 readyz 判断，`-once` 不写。
+
 `-mode evidence` 输出含真实业务 ID 的证据，只应留在操作员本地。需要留存或分享时用：
 
 ```sh
@@ -112,9 +114,9 @@ Harness checkpoint 保存 Run、next_step、phase、feedback、stop_reason、重
 | Complete 已提交、确认响应丢失 | Run 已终态，不被候选扫描重新执行；通过 status 核查 |
 | 旧 Worker 返回 | epoch/owner/version/lease 检查拒绝提交 |
 
-模型原始拒绝输出不持久，保留不含原文的拒绝占位决策，仍走原有拒绝/修复计数。持久模式按预留额保守扣费，即使 usage 较少也不退款；usage 超预留会阻止后续模型调用。实际 usage 与预留均可核查，仍不保证供应商账单硬上限。
+模型原始拒绝输出不持久，保留不含原文的拒绝占位决策，仍走原有拒绝/修复计数。调用前先按预留额持久扣费。提交时如有合法 usage 且不超预留，按实际用量结算；失败、未知、缺 usage 或提交未确认的调用保持全额，usage 超预留会阻止后续模型调用。实际 usage 与预留均可核查，仍不保证供应商账单硬上限。
 
-查询操作 `tool` 不计实际网络请求；每次 `Budget.Reserve()`（包括 Adapter 重试）先持久化独立 `query` 请求扣费。Fixture 消耗零后端请求。在线模式已用本地模拟后端验证此契约，真实后端尚未验收。
+查询操作 `tool` 不计实际网络请求；每次 `Budget.Reserve()`（包括 Adapter 重试）先持久化独立 `query` 请求扣费。Fixture 消耗零后端请求。在线模式已用本地模拟后端和本机真实后端验证此契约，见[任务 0009](../../tasks/0009-online-investigation.md)。
 
 ## 3. 生命周期与异常
 
@@ -136,6 +138,6 @@ make test-redis
 make build
 ```
 
-`test-redis` 自建临时 Unix socket Redis（TCP=0），含模型提交后的进程退出与真实租约到期接管，因此约需两到三分钟。覆盖幂等结果复用、UNKNOWN 不退款/不重发、取消/到期、实际请求预留、续租、进程退出、配置检查、并发准入、名额回收、接管占额、内存预留、迟到完成、损坏状态和编译后 CLI 的 enqueue/work/status/evidence/cancel；本地 HTTP 模型仅是程序协议验证。
+`test-redis` 自建临时 Unix socket Redis（TCP=0），含模型提交后的进程退出与真实租约到期接管，因此约需三分钟。覆盖幂等结果复用、UNKNOWN 不退款/不重发、取消/到期、实际请求预留、续租、进程退出、配置检查、并发准入、名额回收、接管占额、内存预留、迟到完成、损坏状态和编译后 CLI 的 enqueue/work/status/evidence/cancel；本地 HTTP 模型仅是程序协议验证。
 
-完整结果见[Worker 改动报告](../reports/0006-worker-recovery.md)和[容量与终态报告](../reports/0008-capacity-and-results.md)。在线模式仅通过[本地模拟验证](../reports/0009-online-investigation.md)。尚未验收真实供应商、真实遥测后端、HTTP 入口认证、Incident 去重、容量压测、SSE 或高可用。任务 0007 已升级至 Go 1.26.10，普通与 Redis 标签的已知可达漏洞扫描通过，见[工程基线报告](../reports/0007-production-baseline.md)。Redis/主机故障不保证零丢失；不能据此宣称整个项目生产就绪。
+完整结果见[Worker 改动报告](../reports/0006-worker-recovery.md)和[容量与终态报告](../reports/0008-capacity-and-results.md)。在线模式的验证范围见[任务 0009](../../tasks/0009-online-investigation.md)。尚未验收真实供应商、部署环境的入口认证、Incident 去重、容量压测、SSE 或高可用。任务 0007 已升级至 Go 1.26.10，普通与 Redis 标签的已知可达漏洞扫描通过，见[工程基线报告](../reports/0007-production-baseline.md)。Redis/主机故障不保证零丢失；不能据此宣称整个项目生产就绪。
