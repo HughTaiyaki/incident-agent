@@ -1,5 +1,10 @@
 # 文档维护记录
 
+## 2026-11-01 · 首次推送与远端 CI
+
+- 首次提交 `df36eee` 推送到公开仓库 [HughTaiyaki/incident-agent](https://github.com/HughTaiyaki/incident-agent) 的 main 分支；[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779) 在 ubuntu-24.04 通过，完成 P0 与 P1 的远端门槛。
+- 决定：仓库公开，本机路径改为相对路径；新增根目录 `.gitignore`；提交者邮箱使用 noreply 地址。
+
 ## 2026-11-01 · Run 容量与终态查询
 
 - 完成[任务 0008](../tasks/0008-capacity-and-results.md)本机验收：create 原子校验活跃数上限和每活跃 Run 8MiB 内存预留，终态释放名额，接管和重复 ID 不占额。

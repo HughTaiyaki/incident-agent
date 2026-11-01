@@ -4,7 +4,7 @@
 
 IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当前已有健康检查 API、三源只读查询 CLI、匿名证据 Bundle、离线回放及脚本驱动的单次调查 Harness、结构化日志聚合；已增加有界模型上下文、Token 预算和显式配置 HTTP Provider；已增加 Redis 原子状态、Harness checkpoint、可恢复 Worker、全局 Run 准入和终态查询投影；真实供应商联调、在线持久调查与工作台待验收/实现。当前能力以 [README](README.md) 和代码为准。
 
-当前已完成[任务 0007：生产工程基线](tasks/0007-production-baseline.md)和[任务 0008：Run 容量与终态查询](tasks/0008-capacity-and-results.md)的本机验收，远端 CI 待运行；下一开发切片为[任务 0009：在线持久调查与供应商联调](tasks/0009-online-investigation.md)，后续顺序见[生产路线](docs/development/production-roadmap.md)；[任务 0006：独立 Redis 状态与恢复](tasks/0006-redis-recovery.md)已完成工程切片；[任务 0005：模型调用边界](tasks/0005-model-boundary.md)已完成工程切片，建立在已完成的[离线调查](tasks/0003-offline-investigation.md)和[日志聚合](tasks/0004-log-patterns.md)之上；[任务 0002：商城遥测接入](tasks/0002-goframeshop-integration.md)保留固定版本故障案例待验收。文档维护或查询按用户请求完成，不自动启动该任务。复用商城及 Prometheus／Loki／Jaeger；不重建商城、不开发自研 KV、不增加第二个 Trace 后端。上游事实见[固定提交基线](docs/integration/goframeshop-baseline.md)。
+当前已完成[任务 0007：生产工程基线](tasks/0007-production-baseline.md)和[任务 0008：Run 容量与终态查询](tasks/0008-capacity-and-results.md)的工程验收，本机与远端 CI 均通过；下一开发切片为[任务 0009：在线持久调查与供应商联调](tasks/0009-online-investigation.md)，后续顺序见[生产路线](docs/development/production-roadmap.md)；[任务 0006：独立 Redis 状态与恢复](tasks/0006-redis-recovery.md)已完成工程切片；[任务 0005：模型调用边界](tasks/0005-model-boundary.md)已完成工程切片，建立在已完成的[离线调查](tasks/0003-offline-investigation.md)和[日志聚合](tasks/0004-log-patterns.md)之上；[任务 0002：商城遥测接入](tasks/0002-goframeshop-integration.md)保留固定版本故障案例待验收。文档维护或查询按用户请求完成，不自动启动该任务。复用商城及 Prometheus／Loki／Jaeger；不重建商城、不开发自研 KV、不增加第二个 Trace 后端。上游事实见[固定提交基线](docs/integration/goframeshop-baseline.md)。
 
 用户确认的本机商城目录为工作区同级的 `../GoframeShop/goframeshop/`（相对工作区根目录）；版本与实验前置检查见[本机入口](docs/integration/goframeshop-baseline.md#本机入口与运行状态)。该路径仅供开发核对，不作为 Agent 的 Shell／源码读取工具入口。用户要求暂不修改商城相关代码；确需上游调整时，先说明原因与改动范围并提醒用户审查。
 
@@ -55,4 +55,5 @@ IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当�
 - Go 编码、审阅、调试或配置前加载 `golang-how-to` 技能，由其路由必要技能；纯文档维护不触发 Go 开发流程。
 - 行为变化添加必要回归测试，不削弱断言；契约变化同步所属专题和受影响入口，重要决定记入 [changelog](docs/changelog.md)。
 - 当前命令：`make build`、`make fmt`、`make vet`、`make test`、`make test-race`、`make lint`、`make verify`、`make run`、`make test-integration`、`make test-redis`、`make release-check`、`make security`；依赖与选择方式见[验证规则](docs/development/workflow.md)。
+- 仓库公开：提交内容不得含本机绝对路径、个人邮箱、密钥或运行日志，提交者邮箱使用 GitHub noreply 地址。
 - 文档改动检查链接、事实、状态和交叉引用即可；明确未运行项。不得把源码核对、上游结果、目标设计写成本地实测；尚无 eval/demo 命令。

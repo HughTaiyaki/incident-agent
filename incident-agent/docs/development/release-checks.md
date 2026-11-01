@@ -42,4 +42,6 @@ release-check 顺序执行：格式检查 → go mod verify → vet → race →
 
 CI 安装 Redis 测试可执行程序，但测试只连接自己创建的 Unix socket。没有模型密钥、发布令牌、部署步骤，也没有商城实验。增加 go mod tidy 后差异检查，避免模块文件漂移。
 
-本轮仅完成工作流本地 actionlint 校验及同一 Make 入口的本机验证，**没有推送代码或运行远端 GitHub Actions**。远端 Linux runner 结果必须在实际推送后单独核查；本地 macOS 通过不能替代它。
+2026-11-01 首次远端运行通过：提交 `df36eee`，ubuntu-24.04，模块 tidy 差异检查和 `make release-check` 均成功，见[运行记录](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779)。之后的提交以各自的运行结果为准；本地 macOS 通过不能替代远端 Linux runner 结果。
+
+仓库[公开](https://github.com/HughTaiyaki/incident-agent)，提交前不得纳入本机绝对路径、个人邮箱、密钥或运行日志。根目录与项目 `.gitignore` 排除本地配置和 `data/`，提交者邮箱使用 GitHub noreply 地址。

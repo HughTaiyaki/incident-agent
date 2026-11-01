@@ -1,6 +1,6 @@
 # 文档索引
 
-更新：2026-11-01。当前方向是复用已完成的 GoFrame 商城，构建只读诊断 Agent；三源查询 CLI 与回放已实现，离线 Harness 已实现，模型 Provider/预算已实现、真实联调待验收；[任务 0007](../tasks/0007-production-baseline.md)和[任务 0008](../tasks/0008-capacity-and-results.md)本机验收已完成，下一切片为[任务 0009](../tasks/0009-online-investigation.md)，日志结构聚合已接入离线 Harness，任务 0002 的故障案例验收仍未完成。
+更新：2026-11-01。当前方向是复用已完成的 GoFrame 商城，构建只读诊断 Agent；三源查询 CLI 与回放已实现，离线 Harness 已实现，模型 Provider/预算已实现、真实联调待验收；[任务 0007](../tasks/0007-production-baseline.md)和[任务 0008](../tasks/0008-capacity-and-results.md)工程验收已完成（本机与远端 CI 通过），下一切片为[任务 0009](../tasks/0009-online-investigation.md)，日志结构聚合已接入离线 Harness，任务 0002 的故障案例验收仍未完成。
 
 ## 从这里选择入口
 

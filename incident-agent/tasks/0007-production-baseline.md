@@ -1,6 +1,6 @@
 # 任务 0007：生产工程基线
 
-日期：2026-11-01。状态：本机工程验收完成，远端 CI 待运行。范围对应[路线 P0](../docs/development/production-roadmap.md)。
+日期：2026-11-01。状态：已完成，本机与[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779) 均通过。范围对应[路线 P0](../docs/development/production-roadmap.md)。
 
 ## 目标与实施
 
@@ -19,6 +19,6 @@
 
 ## 验收结果与交接
 
-2026-11-01 本机 `make release-check` 退出 0：模块/格式/vet/race/lint、独立 Redis 恢复、五个命令构建和普通/Redis 标签漏洞扫描全部通过。格式检查负例及越界符号链接拒绝验证通过，CI 配置 actionlint 通过。没有推送或运行远端 CI。
+2026-11-01 本机 `make release-check` 退出 0：模块/格式/vet/race/lint、独立 Redis 恢复、五个命令构建和普通/Redis 标签漏洞扫描全部通过。格式检查负例及越界符号链接拒绝验证通过，CI 配置 actionlint 通过。同日首次推送后，远端 ubuntu-24.04 运行通过（提交 `df36eee`，已包含任务 0008 的改动）。
 
 版本、文件变化与限制见[改动报告](../docs/reports/0007-production-baseline.md)。下一阶段是[任务 0008](0008-capacity-and-results.md)，本轮未实现容量控制或终态投影。
