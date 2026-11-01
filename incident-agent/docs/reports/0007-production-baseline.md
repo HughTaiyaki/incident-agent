@@ -33,7 +33,7 @@
 | Redis 恢复与二进制核查 | Redis 回归用时 66.226s；incident-worker 构建元数据确认为 go1.26.10 |
 | 格式检查失败路径 | 不合格式、无效语法均返回非零且不改文件；目录外符号链接被拒绝；临时样本已清理 |
 | 工作流静态校验 | actionlint v1.7.7 通过，未启用额外 ShellCheck |
-| 远端 GitHub Actions | 本轮未运行；后续首次推送后[通过](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779)（提交 `df36eee`）。没有发布或部署 |
+| 远端 GitHub Actions | 本轮未运行；后续首次推送后[通过](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml)（提交 `42c8f3f`）。没有发布或部署 |
 
 完整本机发布日志保存于 `data/production-baseline-20261101/release-check.log`，属于 git 忽略的运行产物。工作区尚未提交，不填写虚构提交号。工具版本、命令和校验数据库说明集中在[发布指南](../development/release-checks.md)。
 

@@ -1,6 +1,6 @@
 # 阶段 0008：Run 容量与终态查询改动报告
 
-日期：2026-11-01。对应[任务 0008](../../tasks/0008-capacity-and-results.md)与[生产路线 P1](../development/production-roadmap.md)。代码随首次提交 `df36eee` 入库。
+日期：2026-11-01。对应[任务 0008](../../tasks/0008-capacity-and-results.md)与[生产路线 P1](../development/production-roadmap.md)。代码随首次提交 `42c8f3f` 入库。
 
 ## 修改前后
 
@@ -40,7 +40,7 @@
 | --- | --- |
 | 完整 `make release-check` | 退出 0：格式、模块校验、vet、race、lint（0 issues）、Redis 回归 65.7s、五个命令构建 |
 | 普通和 redisintegration 标签 govulncheck | 均为 `No vulnerabilities found.` |
-| 远端 GitHub Actions | [通过](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779)：提交 `df36eee`，ubuntu-24.04，tidy 差异检查与 `make release-check` 均成功 |
+| 远端 GitHub Actions | [通过](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml)：提交 `42c8f3f`，ubuntu-24.04，tidy 差异检查与 `make release-check` 均成功 |
 | 并发创建 | 16 个不同 ID 抢 4 个名额：恰好 4 个 OK、12 个 OVER_CAPACITY，被拒 ID 无状态键 |
 | 重复 ID | 8 个并发同 ID 只创建一次；已满时仍返回 EXISTS/CONFLICT，不报过载 |
 | 名额回收 | 排队取消、完成后释放；运行中取消和到期在 Worker 收尾前不释放 |

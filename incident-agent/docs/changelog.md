@@ -1,5 +1,10 @@
 # 文档维护记录
 
+## 2026-11-01 · 改写历史移除简历目标稿
+
+- 用户决定从 Git 历史中移除简历目标稿，并强制推送 main；所有提交号因此改变，文档中的提交号已更新。早期 CI 运行记录显示的是改写前的提交号。
+- GitHub 上旧提交在清理前仍可按提交号访问，彻底清除需要 GitHub 支持或重建仓库。
+
 ## 2026-11-01 · 在线持久调查工程切片
 
 - [任务 0009](../tasks/0009-online-investigation.md)：incident-worker 增加 `-live` 和匿名 export，后端地址显式配置并冻结身份。
@@ -13,7 +18,7 @@
 
 ## 2026-11-01 · 首次推送与远端 CI
 
-- 首次提交 `df36eee` 推送到公开仓库 [HughTaiyaki/incident-agent](https://github.com/HughTaiyaki/incident-agent) 的 main 分支；[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779) 在 ubuntu-24.04 通过，完成 P0 与 P1 的远端门槛。
+- 首次提交 `42c8f3f` 推送到公开仓库 [HughTaiyaki/incident-agent](https://github.com/HughTaiyaki/incident-agent) 的 main 分支；[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml) 在 ubuntu-24.04 通过，完成 P0 与 P1 的远端门槛。
 - 决定：仓库公开，本机路径改为相对路径；新增根目录 `.gitignore`；提交者邮箱使用 noreply 地址。
 
 ## 2026-11-01 · Run 容量与终态查询

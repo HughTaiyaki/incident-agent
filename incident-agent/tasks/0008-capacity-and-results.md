@@ -1,6 +1,6 @@
 # 任务 0008：Run 容量与终态查询
 
-日期：2026-11-01。状态：工程验收完成，本机与[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779) 均通过。依赖[0007 工程基线](0007-production-baseline.md)，对应[路线 P1](../docs/development/production-roadmap.md)。
+日期：2026-11-01。状态：工程验收完成，本机与[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml) 均通过。依赖[0007 工程基线](0007-production-baseline.md)，对应[路线 P1](../docs/development/production-roadmap.md)。
 
 ## 目标
 
@@ -20,7 +20,7 @@
 
 ## 验收结果与交接
 
-2026-11-01 本机 `make release-check` 退出 0。并发创建、名额回收、接管、内存预留、迟到完成、损坏状态和 CLI 全流程均有测试，结果与文件清单见[改动报告](../docs/reports/0008-capacity-and-results.md)。远端 ubuntu-24.04 同样通过（提交 `df36eee`）。没有做容量压测。
+2026-11-01 本机 `make release-check` 退出 0。并发创建、名额回收、接管、内存预留、迟到完成、损坏状态和 CLI 全流程均有测试，结果与文件清单见[改动报告](../docs/reports/0008-capacity-and-results.md)。远端 ubuntu-24.04 同样通过（提交 `42c8f3f`）。没有做容量压测。
 
 遗留：
 
