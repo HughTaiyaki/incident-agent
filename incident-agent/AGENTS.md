@@ -28,7 +28,7 @@ IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当�
 | 遥测字段、查询、来源质量 | [遥测契约](docs/telemetry/data-contract.md)相关章节 |
 | 样本、评测或演示 | [评测方案](docs/evaluation/plan.md)相关章节 |
 | 修改文档、开发或验收交接 | [工作流程与维护规则](docs/development/workflow.md) |
-| 简历表述 | [简历目标稿](04-IncidentLens简历目标稿.md)，仅有实现和实测证据的条目可写为完成 |
+| 简历表述 | `04-IncidentLens简历目标稿.md`（本地文件，不入库），仅有实现和实测证据的条目可写为完成 |
 
 ## 架构边界
 

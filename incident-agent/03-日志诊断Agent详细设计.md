@@ -2,7 +2,7 @@
 
 > 更新：2026-10-31；状态：**目标设计，内核与模型调用边界已实现，真实效果与持久化待验收/实现**。  
 > 本文替代 2026-09-07 原稿，是产品范围、整体架构与选型理由的主入口。当前已实现健康检查 API、三源查询 CLI、匿名快照回放与脚本驱动的离线调查内核；模型 HTTP 调用与内存预算已增加，Redis 原子状态、Harness checkpoint 与 Worker 已接线，真实供应商联调、在线持久调查和工作台待验收/实现，见 [README](README.md)。  
-> [简历目标稿](04-IncidentLens简历目标稿.md) · [文档索引](docs/index.md) · [执行与恢复协议](docs/architecture/investigation-design.md) · [当前任务](tasks/0005-model-boundary.md)
+> `04-IncidentLens简历目标稿.md`（本地文件，不入库） · [文档索引](docs/index.md) · [执行与恢复协议](docs/architecture/investigation-design.md) · [当前任务](tasks/0005-model-boundary.md)
 
 ## 1. 项目要解决什么问题
 
@@ -222,7 +222,7 @@ sequenceDiagram
 
 按 2026-10-29 用户范围，任务 0003 已先交付脚本驱动的离线 Harness 子集；真实供应商联调与效果仍待验收。任务 0004 已实现单次日志样本的确定性聚合，任务 0005 已实现有界模型输入与内存 Token 核算，实际效果与持久恢复仍待验收。核心闭环先于通知渠道、第二模型与复杂检索。
 
-[简历目标稿](04-IncidentLens简历目标稿.md)按 Harness、上下文、证据、恢复和工作台五条组织，每条对应本设计的验收证据。完成相应实现与实测后，才能改为完成表述并填真实指标。
+`04-IncidentLens简历目标稿.md`（本地文件，不入库）按 Harness、上下文、证据、恢复和工作台五条组织，每条对应本设计的验收证据。完成相应实现与实测后，才能改为完成表述并填真实指标。
 
 ## 11. 文档维护与关键追问
 

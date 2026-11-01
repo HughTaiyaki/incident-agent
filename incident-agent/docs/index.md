@@ -21,7 +21,7 @@
 | 工具、预算、状态、恢复怎样执行 | [调查协议](architecture/investigation-design.md) | 按协议定位实现和回归测试；离线子集见使用指南，持久执行仍待实现 |
 | 如何制作样本、判分和演示 | [评测方案](evaluation/plan.md) | 要发布成绩时查看逐次结果与原始证据 |
 | 如何改动、验证和同步文档 | [工作流程与维护规则](development/workflow.md) | 按变更类型查同步清单 |
-| 如何写简历与准备证据 | [04 简历目标稿](../04-IncidentLens简历目标稿.md) | 只有实现与实测可支持完成表述 |
+| 如何写简历与准备证据 | `04-IncidentLens简历目标稿.md`（本地文件，不入库） | 只有实现与实测可支持完成表述 |
 | 最近为什么改变方向 | [changelog](changelog.md)、[ADR-0002](adr/0002-reuse-goframeshop.md) | 需要历史追溯时读被替代记录 |
 
 当前恢复开发入口：[任务 0006](../tasks/0006-redis-recovery.md) → [Redis 协议](development/redis-state.md) → [本轮改动报告](reports/0006-redis-protocol.md)。只核查存储时读这条路径，无需通读模型或商城文档。

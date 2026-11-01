@@ -22,6 +22,6 @@
 | 已有服务、字段、指标、告警和来源质量 | [遥测契约](../telemetry/data-contract.md)、[源码基线](../integration/goframeshop-baseline.md) |
 | 对照、真值、恢复和业务收益验证 | [评测方案](../evaluation/plan.md) |
 | 当前实施与验收 | [生产工程基线 0007](../../tasks/0007-production-baseline.md)、[后续路线](../development/production-roadmap.md)； [Redis 恢复任务 0006](../../tasks/0006-redis-recovery.md)； [模型调用任务 0005](../../tasks/0005-model-boundary.md)； [日志聚合任务 0004](../../tasks/0004-log-patterns.md)、[离线任务 0003](../../tasks/0003-offline-investigation.md)；[接入任务 0002](../../tasks/0002-goframeshop-integration.md)的故障样本待验收 |
-| 简历目标与证据映射 | [简历目标稿](../../04-IncidentLens简历目标稿.md) |
+| 简历目标与证据映射 | `04-IncidentLens简历目标稿.md`（本地文件，不入库） |
 
 当前保留健康检查 API，已增加 internal/telemetry、outbound/telemetryhttp、outbound/fixture、app/capture 与 cmd/incident-query，提供有界查询和冻结样本回放，见[使用指南](../integration/query-adapters.md)。现已增加 app/investigation、outbound/scripted 与 cmd/incident-investigate，提供[离线 Harness](../development/offline-investigation.md)；任务 0005 增加模型 HTTP Adapter、有界输入与内存预算；任务 0006 增加 Redis 原子状态脚本与隔离测试；已接入 Harness checkpoint 与可恢复 Worker；真实供应商、在线持久调查和工作台仍待验收/实现。代码、测试与实际依赖决定实现状态，设计和简历目标不作为已完成证明。

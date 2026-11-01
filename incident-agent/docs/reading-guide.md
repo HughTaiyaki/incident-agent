@@ -35,7 +35,7 @@
 | 告警入口与去重 | [遥测](telemetry/data-contract.md) §5、§8；[调查](architecture/investigation-design.md) §10.1 及 §7 的 CreateRun/容量规则；[评测](evaluation/plan.md) §8 | 需要真实 firing 演示时读评测 §4 |
 | 证据报告、SSE、人工反馈与恢复验证 | [调查](architecture/investigation-design.md) §2、§6、§8、§10.3；[评测](evaluation/plan.md) §8 | 修改来源质量时读遥测 §6–7；新增执行或预算行为再读调查 §3–4、§7 |
 | Fixture 采集与脱敏 | [评测](evaluation/plan.md) §2–4；[遥测](telemetry/data-contract.md)对应数据源章节及 §6–7 | 更新上游时按基线 §5 核对版本；真值始终隔离 |
-| 诊断对照、消融、发布成绩 | [评测](evaluation/plan.md) §1、§5–8 | 根因粒度争议回到 §2 与冻结证据；简历表述再读 04 §3 |
+| 诊断对照、消融、发布成绩 | [评测](evaluation/plan.md) §1、§5–8 | 根因粒度争议回到 §2 与冻结证据；简历表述再读本地目标稿 §3 |
 | 文档维护与任务交接 | [维护规则](development/workflow.md)；本次受影响专题 | 改整体范围再读主设计与 ADR；不因改导航重新实测全部后端 |
 
 ## 3. 当前任务的最短路径

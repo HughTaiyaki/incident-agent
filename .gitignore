@@ -11,3 +11,6 @@
 # Local tool settings and logs
 .claude/settings.local.json
 *.log
+
+# Personal drafts kept out of the public repository
+incident-agent/04-IncidentLens简历目标稿.md

@@ -83,7 +83,7 @@ mkdir -p data
 - [渐进式阅读指南：各类任务的最小阅读集](docs/reading-guide.md)
 - [工作流程与文档维护规则](docs/development/workflow.md)
 - [整体架构、架构图与选型理由](03-日志诊断Agent详细设计.md)
-- [简历目标稿（尚未实现，不能作为完成经历）](04-IncidentLens简历目标稿.md)
+- `04-IncidentLens简历目标稿.md`（本地文件，不入库）
 - [架构导航](docs/architecture/overview.md)
 - [商城代码基线与接入差距](docs/integration/goframeshop-baseline.md)
 - [遥测数据契约](docs/telemetry/data-contract.md)
