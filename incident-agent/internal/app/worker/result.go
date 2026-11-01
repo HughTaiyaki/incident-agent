@@ -89,6 +89,7 @@ type Evidence struct {
 	Schema      string                      `json:"schema"`
 	ID          string                      `json:"id"`
 	Status      string                      `json:"status"`
+	Origin      string                      `json:"origin"`
 	Evidence    []telemetry.Result          `json:"evidence"`
 	LogPatterns []investigation.LogPatterns `json:"log_patterns"`
 }
@@ -122,7 +123,12 @@ func ReadEvidence(ctx context.Context, store runstate.Store, id string) (Evidenc
 	if err != nil {
 		return Evidence{}, err
 	}
-	view := Evidence{Schema: EvidenceSchema, ID: state.ID, Status: state.Status, Evidence: []telemetry.Result{}, LogPatterns: []investigation.LogPatterns{}}
+	origin := "replay"
+	var job Job
+	if json.Unmarshal([]byte(state.Request), &job) == nil && job.TelemetryID != "" {
+		origin = "live"
+	}
+	view := Evidence{Schema: EvidenceSchema, ID: state.ID, Status: state.Status, Origin: origin, Evidence: []telemetry.Result{}, LogPatterns: []investigation.LogPatterns{}}
 	if cp != nil {
 		if cp.Run.Evidence != nil {
 			view.Evidence = cp.Run.Evidence
@@ -147,7 +153,12 @@ func Project(reply runstate.Reply) (Result, error) {
 		Operations: []OperationSummary{}, Evidence: []EvidenceSummary{},
 	}
 	for id, op := range state.Operations {
-		result.Operations = append(result.Operations, OperationSummary{ID: id, Kind: op.Kind, Cost: op.Cost, Status: op.Status, Epoch: op.Epoch})
+		status := op.Status
+		if op.Kind == "query" {
+			// One charge per backend request; its outcome is on the owning tool operation.
+			status = "CHARGED"
+		}
+		result.Operations = append(result.Operations, OperationSummary{ID: id, Kind: op.Kind, Cost: op.Cost, Status: status, Epoch: op.Epoch})
 	}
 	sort.Slice(result.Operations, func(i, j int) bool { return result.Operations[i].ID < result.Operations[j].ID })
 	if cp != nil {

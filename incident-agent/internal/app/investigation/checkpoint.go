@@ -78,9 +78,15 @@ func SanitizeResult(result telemetry.Result, q telemetry.Query, policy telemetry
 	if validResult(result, q, policy) && !(queryErr != nil && result.Quality.QueryOutcome == "SUCCEEDED") {
 		return result
 	}
+	return FailedResult(q, "QUERY_FAILED")
+}
+
+// FailedResult records that no usable source result exists. The "harness" source
+// keeps it from being mistaken for data returned by a telemetry backend.
+func FailedResult(q telemetry.Query, code string) telemetry.Result {
 	canonical, _ := json.Marshal(q)
-	result = telemetry.NewResult(q, "fixture", string(canonical))
-	result.ErrorCode = "QUERY_FAILED"
+	result := telemetry.NewResult(q, "harness", string(canonical))
+	result.ErrorCode = code
 	result.Finish()
 	return result
 }

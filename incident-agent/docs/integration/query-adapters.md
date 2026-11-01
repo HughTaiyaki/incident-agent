@@ -108,6 +108,6 @@ INCIDENT_INTEGRATION_QUERIES="$PWD/data/live-queries.json" make test-integration
 
 在线集成测试显式启用，要求输入含 metrics、logs、traces、trace 四类查询且每类能返回已知记录；缺少环境、文件或数据直接失败，不以跳过冒充通过。测试依赖运行中的后端和保留期内的真实 Trace ID，不能直接使用匿名化回放 queries.json。
 
-尚待任务 0002 完成：固定运行版本的故障案例采集、D1/D3/N1 与证据不足对照、异常/恢复人工结论。自动告警轮询、完整日志聚合、模型调查和 Redis 恢复属于后续切片。
+尚待任务 0002 完成：固定运行版本的故障案例采集、D1/D3/N1 与证据不足对照、异常/恢复人工结论。自动告警轮询属于后续切片；持久调查的在线模式见 [Worker 指南](../development/worker-recovery.md#在线遥测模式)。
 
 协议参考：[Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/)、[Loki HTTP API](https://grafana.com/docs/loki/latest/reference/loki-http-api/)、[Jaeger 2.11 APIs](https://www.jaegertracing.io/docs/2.11/architecture/apis/)。本次实现使用已部署版本验证过的接口子集；Jaeger JSON 查询 API 存在版本耦合，升级时重跑契约和在线验收。

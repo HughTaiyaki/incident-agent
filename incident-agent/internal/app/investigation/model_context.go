@@ -33,6 +33,21 @@ type modelInput struct {
 // estimateInput is deliberately conservative UTF-8 byte accounting, not a model tokenizer.
 func estimateInput(input []byte) int { return len(modelInstructions) + len(input) + 256 }
 
+// maskIdentifiers replaces business identifiers with per-run pseudonyms before
+// records leave for a provider. The same value stays correlatable within a run.
+// Trace and span IDs stay readable: they are random and the model queries by them.
+func maskIdentifiers(record telemetry.Record, salt string) telemetry.Record {
+	fields := make(map[string]string, len(record.Fields))
+	for key, value := range record.Fields {
+		if telemetry.IsIdentifierField(key) {
+			value = "masked-" + telemetry.Hash([]byte(salt + "\x00" + value))[:16]
+		}
+		fields[key] = value
+	}
+	record.Fields = fields
+	return record
+}
+
 func buildModelInput(view View, limit int) ([]byte, int, int, error) {
 	input := modelInput{Request: view.Request, Phase: view.Phase, Feedback: view.Feedback,
 		Queries: []contextQuery{}, Records: []telemetry.Record{}}
@@ -96,7 +111,7 @@ func buildModelInput(view View, limit int) ([]byte, int, int, error) {
 				continue
 			}
 			seen[record.ID] = true
-			input.Records = append(input.Records, record)
+			input.Records = append(input.Records, maskIdentifiers(record, view.RunID))
 			input.OmittedRecords--
 			candidate, _ := json.Marshal(input)
 			if estimateInput(candidate) > limit {

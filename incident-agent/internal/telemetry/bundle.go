@@ -67,6 +67,15 @@ func (b *Bundle) seal() error {
 	return nil
 }
 
+// IsIdentifierField reports whether a record field holds a business identifier.
+func IsIdentifierField(key string) bool {
+	switch key {
+	case "order_id", "operation_id", "event_id", "order.no", "payment.id", "messaging.message.id":
+		return true
+	}
+	return false
+}
+
 // Anonymize replaces correlation identifiers consistently across queries and records.
 // The caller supplies a fresh collection salt; it is not included in the bundle.
 func (b *Bundle) Anonymize(salt []byte) error {
@@ -80,8 +89,6 @@ func (b *Bundle) Anonymize(salt []byte) error {
 		}
 		replacements[value] = Hash(append(append([]byte{}, salt...), []byte(value)...))[:size]
 	}
-	idKeys := map[string]bool{"order_id": true, "operation_id": true, "event_id": true,
-		"order.no": true, "payment.id": true, "messaging.message.id": true}
 	for _, entry := range b.Entries {
 		q := entry.Query
 		for _, value := range []string{q.OrderID, q.OperationID, q.EventID} {
@@ -92,7 +99,7 @@ func (b *Bundle) Anonymize(salt []byte) error {
 			register(record.TraceID, 32)
 			register(record.SpanID, 16)
 			for key, value := range record.Fields {
-				if idKeys[key] {
+				if IsIdentifierField(key) {
 					register(value, 32)
 				}
 			}
@@ -117,7 +124,7 @@ func (b *Bundle) Anonymize(salt []byte) error {
 			record.TraceID = replacements[record.TraceID]
 			record.SpanID = replacements[record.SpanID]
 			for key, value := range record.Fields {
-				if idKeys[key] {
+				if IsIdentifierField(key) {
 					record.Fields[key] = replacements[value]
 				}
 			}
@@ -199,7 +206,7 @@ func ReadBundle(reader io.Reader) (Bundle, error) {
 		for strings.HasPrefix(source, "fixture:") {
 			source = strings.TrimPrefix(source, "fixture:")
 		}
-		if source != "prometheus" && source != "loki" && source != "jaeger" && source != "fixture" {
+		if source != "prometheus" && source != "loki" && source != "jaeger" && source != "fixture" && source != "harness" {
 			return Bundle{}, errors.New("invalid evidence source")
 		}
 		for _, record := range entry.Records {

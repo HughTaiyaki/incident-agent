@@ -12,14 +12,15 @@
 - **离线内核已验证：**[任务 0003](tasks/0003-offline-investigation.md)的执行闭环；支持范围与次数限制、无进展停止、取消、证据引用校验及确定性收尾。脚本决策不代表真实模型诊断。
 - **恢复能力：**[任务 0006](tasks/0006-redis-recovery.md)已接入独立 Redis、Harness checkpoint 与可恢复 Worker；运行 `make test-redis`，见[协议与限制](docs/development/redis-state.md)。持久入口为 `incident-worker`，见[运行与恢复指南](docs/development/worker-recovery.md)；旧 CLI 仍为内存模式。
 - **工程基线已验证：**[任务 0007](tasks/0007-production-baseline.md)已升级至 Go 1.26.10，完整 `make release-check` 通过，普通与 Redis 标签漏洞扫描均无可达漏洞报告；[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41297113779) 通过。
-- **容量与终态已验证：**[任务 0008](tasks/0008-capacity-and-results.md)增加全局 Run 准入、内存预留和版本化结果投影，本机与远端 `make release-check` 通过；尚未压测，不提供生产容量推荐值。下一阶段为[任务 0009：在线持久调查与供应商联调](tasks/0009-online-investigation.md)，后续按[生产路线](docs/development/production-roadmap.md)推进 API 和运维。
-- **待完成：**任务 0002 的固定版本故障样本与人工验收，以及真实供应商兼容性/效果、Incident 去重、在线持久调查验收、容量压测、效果评测与 React/SSE 工作台。商城代码暂不修改，必要调整先提醒用户审查。
+- **容量与终态已验证：**[任务 0008](tasks/0008-capacity-and-results.md)增加全局 Run 准入、内存预留和版本化结果投影，本机与远端 `make release-check` 通过；尚未压测，不提供生产容量推荐值。
+- **在线持久调查：**[任务 0009](tasks/0009-online-investigation.md)为 `incident-worker` 增加 `-live`，已用本地模拟后端和模型验证失败与恢复路径；**尚未连接真实后端或真实供应商**。后续按[生产路线](docs/development/production-roadmap.md)推进 API 和运维。
+- **待完成：**任务 0002 的固定版本故障样本与人工验收，以及真实供应商兼容性/效果、Incident 去重、真实后端持久调查验收、容量压测、效果评测与 React/SSE 工作台。商城代码暂不修改，必要调整先提醒用户审查。
 
 不再建设另一套小型商城；不开发自研 KV；Trace 后端统一复用商城 Jaeger，不部署 Tempo。Agent 的持久 Redis 必须独立于商城的无持久化缓存 Redis。
 
 ## 持久调查与恢复
 
-新增 `incident-worker` 提供 enqueue/work/status/evidence/cancel，支持启动扫描、租约续期、已保存决策和证据复用。enqueue 需显式设置 `INCIDENT_MAX_ACTIVE_RUNS`，Redis 需配置 maxmemory。只连接显式配置的独立 Redis；当前执行模型＋Fixture，详情见[Worker 指南](docs/development/worker-recovery.md)和[改动报告](docs/reports/0006-worker-recovery.md)。当前正在按[生产路线](docs/development/production-roadmap.md)完善工程与发布门槛，暂不宣称生产就绪。
+新增 `incident-worker` 提供 enqueue/work/status/evidence/export/cancel，支持启动扫描、租约续期、已保存决策和证据复用。enqueue 需显式设置 `INCIDENT_MAX_ACTIVE_RUNS`，Redis 需配置 maxmemory。只连接显式配置的独立 Redis；可用 Fixture 或在线遥测，详情见[Worker 指南](docs/development/worker-recovery.md)和[改动报告](docs/reports/0006-worker-recovery.md)。当前正在按[生产路线](docs/development/production-roadmap.md)完善工程与发布门槛，暂不宣称生产就绪。
 
 发布前执行 `make release-check`；版本、校验数据库设置、CI 和未验收项见[工程发布检查](docs/development/release-checks.md)。
 

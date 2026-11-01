@@ -19,7 +19,7 @@
 
 | 任务 | 最小阅读集 | 触发进一步阅读的条件 |
 | --- | --- | --- |
-| 生产开发进度、工具链与发布 | [生产路线](development/production-roadmap.md)、[发布检查](development/release-checks.md)、[任务 0007](../tasks/0007-production-baseline.md) | 容量/终态读[任务 0008](../tasks/0008-capacity-and-results.md)和 Worker 指南“准入与过载”；真实联调读[任务 0009](../tasks/0009-online-investigation.md)，再加载供应商/遥测文档 |
+| 生产开发进度、工具链与发布 | [生产路线](development/production-roadmap.md)、[发布检查](development/release-checks.md)、[任务 0007](../tasks/0007-production-baseline.md) | 容量/终态读[任务 0008](../tasks/0008-capacity-and-results.md)和 Worker 指南“准入与过载”；在线模式与真实联调读[任务 0009](../tasks/0009-online-investigation.md)和 Worker 指南“在线遥测模式”，再加载供应商/遥测文档 |
 | 运行或解释现有骨架 | [README](../README.md)“当前状态／运行现有骨架” | 改命令或配置：核对 Makefile、go.mod 和入口代码 |
 | 在线查询、匿名导出、离线回放 | [查询使用指南](integration/query-adapters.md) §1–4 | 验证现有样本读[接入报告](reports/0002-readonly-integration.md)；修改查询语义再读遥测专题 |
 | 评审整体方案 | [架构导航](architecture/overview.md)；[主设计](../03-日志诊断Agent详细设计.md) §1–4、§10 | 讨论恢复、预算、权限：再读调查协议对应章节 |

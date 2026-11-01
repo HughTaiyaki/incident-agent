@@ -48,6 +48,8 @@
 
 从剩余查询轮流选择记录，避免单个指标大结果挤掉全部其他来源；日志先考虑已生成聚合的代表记录。只传入规范化结构记录，不传 canonical_query、原始日志正文、实验报告或整个 Bundle。摘要选择是启发式，不保证保留全部反例，不能宣传为无损压缩。
 
+发送前，记录中的业务 ID（order_id、operation_id、event_id、order.no、payment.id、messaging.message.id）换成按 Run 加盐的假名，同一 Run 内仍可关联；Trace/Span ID 保留以便继续查询。这是假名化，不是匿名化。
+
 模型只得到有界数据，不得到 Shell/SQL/URL 工具。返回决策继续经过既有查询 Guard 和 Report Guard；提示词不能替代代码权限控制，引用存在也不证明语义成立。
 
 ## 4. Token 预留与审计

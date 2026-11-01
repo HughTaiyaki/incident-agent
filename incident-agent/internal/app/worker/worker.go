@@ -24,7 +24,9 @@ type Job struct {
 	Model         string                `json:"model"`
 	Window        int                   `json:"window"`
 	FixtureDigest string                `json:"fixture_digest"`
-	ProviderID    string                `json:"provider_id"`
+	// TelemetryID identifies the live backends; a job uses it or FixtureDigest, never both.
+	TelemetryID string `json:"telemetry_id,omitempty"`
+	ProviderID  string `json:"provider_id"`
 }
 
 // Factory verifies frozen configuration and returns per-run dependencies.
@@ -51,7 +53,7 @@ func Enqueue(ctx context.Context, store runstate.Store, id string, job Job, maxA
 	if _, err := investigation.ValidateRequest(job.Request); err != nil {
 		return err
 	}
-	if job.Model == "" || job.Window < 4096 || job.Window > 2000000 || job.ProviderID == "" || job.FixtureDigest == "" || maxActive < 1 || maxActive > MaxActiveLimit {
+	if job.Model == "" || job.Window < 4096 || job.Window > 2000000 || job.ProviderID == "" || (job.FixtureDigest == "") == (job.TelemetryID == "") || maxActive < 1 || maxActive > MaxActiveLimit {
 		return investigation.ErrInvalidInput
 	}
 	job.Version = jobVersion
@@ -158,8 +160,8 @@ func (w *Worker) Process(ctx context.Context, id string) error {
 			}
 		}
 	}()
-	d := &durableDecider{session: s, provider: provider, job: job}
-	q := &durableQuerier{session: s, querier: querier, step: func() int { return d.step }}
+	d := &durableDecider{session: s, provider: provider, job: job, run: workCtx}
+	q := &durableQuerier{session: s, querier: querier, step: func() int { return d.step }, run: workCtx}
 	result, runErr := investigation.Resume(workCtx, cp, d, q, s.save)
 	cancel()
 	<-done

@@ -21,16 +21,33 @@ type queryResult struct {
 	Result telemetry.Result `json:"result"`
 	Failed bool             `json:"failed"`
 }
+
+// run outlives per-call timeouts. A slow provider or backend is a recorded call
+// failure; only the end of run means this process must leave the work for recovery.
 type durableDecider struct {
 	session  *session
 	provider investigation.Provider
 	job      Job
 	step     int
+	run      context.Context
 }
 type durableQuerier struct {
 	session *session
 	querier investigation.Querier
 	step    func() int
+	run     context.Context
+}
+
+// Stored results share one 2MiB allowance. Query results may not spend what later
+// model decisions and failure records need, or a large response would stop the worker.
+const (
+	resultAllowance = 2 << 20
+	resultPerCall   = 65 << 10
+	maxModelCalls   = 12
+)
+
+func (s *session) queryResultRoom() int {
+	return resultAllowance - s.state.ResultBytes - resultPerCall*(maxModelCalls+1-s.state.ModelCalls)
 }
 
 func (s *session) audits() []investigation.ModelCall {
@@ -112,8 +129,8 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	if !reserved {
 		return nil, err
 	}
-	if ctx.Err() != nil {
-		return nil, errors.Join(investigation.ErrPersistence, ctx.Err())
+	if d.run.Err() != nil {
+		return nil, errors.Join(investigation.ErrPersistence, d.run.Err())
 	}
 	audit := m.ModelAudit()
 	call := audit[len(audit)-1]
@@ -131,7 +148,7 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 		return nil, investigation.ErrPersistence
 	}
 	s.mu.Lock()
-	commitErr := s.command(ctx, runstate.Command{Action: "commit", Operation: id, Result: string(data)})
+	commitErr := s.command(d.run, runstate.Command{Action: "commit", Operation: id, Result: string(data)})
 	s.mu.Unlock()
 	if commitErr != nil {
 		return nil, commitErr
@@ -180,8 +197,8 @@ func (q *durableQuerier) Query(ctx context.Context, query telemetry.Query, budge
 	if errors.Is(queryErr, investigation.ErrPersistence) {
 		return telemetry.Result{}, queryErr
 	}
-	if ctx.Err() != nil {
-		return telemetry.Result{}, errors.Join(investigation.ErrPersistence, ctx.Err())
+	if q.run.Err() != nil {
+		return telemetry.Result{}, errors.Join(investigation.ErrPersistence, q.run.Err())
 	}
 	// Validate/sanitize before persistence, not only after the adapter returns.
 	policy, err := investigation.ValidateRequest(q.request())
@@ -194,9 +211,14 @@ func (q *durableQuerier) Query(ctx context.Context, query telemetry.Query, budge
 		return telemetry.Result{}, investigation.ErrPersistence
 	}
 	s.mu.Lock()
-	err = s.command(ctx, runstate.Command{Action: "commit", Operation: id, Result: string(data)})
-	s.mu.Unlock()
-	if err != nil {
+	defer s.mu.Unlock()
+	if len(data) > s.queryResultRoom() {
+		result, queryErr = investigation.FailedResult(query, "RESULT_TOO_LARGE"), telemetry.ErrTooLarge
+		if data, err = json.Marshal(queryResult{Result: result, Failed: true}); err != nil {
+			return telemetry.Result{}, investigation.ErrPersistence
+		}
+	}
+	if err = s.command(q.run, runstate.Command{Action: "commit", Operation: id, Result: string(data)}); err != nil {
 		return telemetry.Result{}, err
 	}
 	return result, queryErr

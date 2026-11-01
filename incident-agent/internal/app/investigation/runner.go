@@ -97,7 +97,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			return Run{}, err
 		}
 		// Deep copy isolates maps, slices, pointers and all frozen evidence from the decider.
-		data, err := json.Marshal(View{Request: request, Phase: phase, Step: step, Evidence: run.Evidence, Feedback: feedback, LogPatterns: run.LogPatterns})
+		data, err := json.Marshal(View{RunID: run.ID, Request: request, Phase: phase, Step: step, Evidence: run.Evidence, Feedback: feedback, LogPatterns: run.LogPatterns})
 		if err != nil {
 			return Run{}, errors.New("cannot encode decision view")
 		}
@@ -190,9 +190,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 				// Invalid or missing results become sanitized failure evidence; raw errors are never saved.
 				if !validResult(result, q, policy) || callErr != nil ||
 					(queryErr != nil && result.Quality.QueryOutcome == "SUCCEEDED") {
-					result = telemetry.NewResult(q, "fixture", key)
-					result.ErrorCode = "QUERY_FAILED"
-					result.Finish()
+					result = FailedResult(q, "QUERY_FAILED")
 					queryErr = telemetry.ErrResponse
 				}
 				encoded, _ := json.Marshal(result)

@@ -41,6 +41,8 @@ type Querier interface {
 
 // View is a detached snapshot; mutation by a decider cannot change saved evidence.
 type View struct {
+	// RunID salts identifier masking and is never sent to a model provider.
+	RunID       string             `json:"run_id"`
 	LogPatterns []LogPatterns      `json:"log_patterns"`
 	Request     Request            `json:"request"`
 	Phase       string             `json:"phase"`
