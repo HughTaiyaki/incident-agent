@@ -1,16 +1,16 @@
 # HTTP 调查 API
 
-更新：2026-11-01。状态：**已实现，本地验证通过；未部署，不宣称生产就绪。** 范围见[任务 0010](../../tasks/0010-http-entry.md)，目标接口全集见[调查协议 §2](../architecture/investigation-design.md#2-输入接口与持久模型)。
+更新：2026-11-02。状态：**已实现，本地验证通过；未在正式环境部署，不宣称生产就绪。** 部署见[部署指南](../operations/deployment.md)。 范围见[任务 0010](../../tasks/0010-http-entry.md)，目标接口全集见[调查协议 §2](../architecture/investigation-design.md#2-输入接口与持久模型)。
 
 ## 1. 启动
 
-`incident-api` 只创建和读取 Run，实际调查由 `incident-worker -mode work -live` 执行。两者必须使用相同的模型和后端配置，否则 Worker 取到任务时会因身份不符而停止。
+`incident-api` 只创建和读取 Run，实际调查由 `incident-worker -mode work -live` 执行。两者必须使用相同的模型和后端配置，否则 Worker 会跳过身份不符的 Run，直到它们到期收尾。
 
 除下表外，还需要 [Worker 指南](worker-recovery.md#1-最短使用路径)中的 Redis 变量和 `INCIDENT_MAX_ACTIVE_RUNS`，以及模型名称、地址、上下文窗口和三个后端地址。API 进程不调用模型或后端，不需要 `INCIDENT_MODEL_API_KEY`。
 
 | 环境变量 | 含义 |
 | --- | --- |
-| INCIDENT_API_TOKEN | 至少 32 字节的操作员凭据，例如 `openssl rand -hex 32` 生成；不设置时不启用调查路由 |
+| INCIDENT_API_TOKEN | 至少 32 字节的操作员凭据，例如 `openssl rand -hex 32` 生成；不设置时不启用调查路由。也可用 INCIDENT_API_TOKEN_FILE 指向文件，同时设置会报错 |
 | INCIDENT_API_BIND | 监听地址，默认 `127.0.0.1` |
 | PORT | 端口，默认 `8080` |
 
@@ -42,6 +42,8 @@
 ```
 
 未知字段直接拒绝。service 必须在服务端白名单内，environment 为 local 或 experiment。调查窗口是 `started_at` 前 `initial_window_minutes`（默认 10，最大 50）到后 5 分钟，并裁到当前时刻。summary 最多 2,000 字符，含疑似凭据的内容被拒绝；它会原样发给模型。
+
+`GET /metrics` 使用相同的 Token，返回 Prometheus 文本格式，Redis 不可用时仍返回 200 和 `incident_redis_up 0`。指标含义见[部署指南](../operations/deployment.md#4-监控)。
 
 ## 3. 重试与幂等
 

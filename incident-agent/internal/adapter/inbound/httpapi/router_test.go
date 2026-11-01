@@ -185,3 +185,29 @@ func TestOverloadTellsClientWhenToRetry(t *testing.T) {
 		t.Fatalf("overload: %d %s", got.Code, got.Body)
 	}
 }
+
+func TestMetricsRequireCredentialAndReportOutage(t *testing.T) {
+	t.Parallel()
+	deps := testDeps(&fakeStore{})
+	deps.Stats = func(context.Context) (runstate.Stats, error) {
+		return runstate.Stats{Ready: 3, WorkerAlive: true, Counters: map[string]int64{"runs:COMPLETED": 2}}, nil
+	}
+	router := NewRouter(deps)
+	if got := call(t, router, http.MethodGet, "/metrics", "", ""); got.Code != http.StatusUnauthorized {
+		t.Fatal(got.Code)
+	}
+	got := call(t, router, http.MethodGet, "/metrics", testToken, "")
+	for _, want := range []string{"incident_redis_up 1", `incident_runs_active{state="ready"} 3`, `incident_runs_finished_total{status="COMPLETED"} 2`, "# TYPE incident_runs_finished_total counter"} {
+		if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), want) {
+			t.Fatalf("%d missing %q: %s", got.Code, want, got.Body)
+		}
+	}
+	deps.Stats = func(context.Context) (runstate.Stats, error) { return runstate.Stats{}, errors.New("private detail") }
+	got = call(t, NewRouter(deps), http.MethodGet, "/metrics", testToken, "")
+	if got.Code != http.StatusOK || !strings.Contains(got.Body.String(), "incident_redis_up 0") || strings.Contains(got.Body.String(), "private") {
+		t.Fatalf("%d %s", got.Code, got.Body)
+	}
+	if got := call(t, NewRouter(testDeps(&fakeStore{})), http.MethodGet, "/metrics", testToken, ""); got.Code != http.StatusNotFound {
+		t.Fatal("metrics exposed without a source:", got.Code)
+	}
+}

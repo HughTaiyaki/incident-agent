@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/hughtaiyaki/incident-agent/internal/app/capture"
 	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 	"github.com/hughtaiyaki/incident-agent/internal/app/worker"
+	"github.com/hughtaiyaki/incident-agent/internal/secretenv"
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
@@ -62,7 +64,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "exactly one of -fixture and -live is required")
 		return 2
 	}
-	store, err := redisstate.New(redisstate.Config{Network: os.Getenv("INCIDENT_REDIS_NETWORK"), Address: os.Getenv("INCIDENT_REDIS_ADDRESS"), Namespace: os.Getenv("INCIDENT_REDIS_NAMESPACE"), Username: os.Getenv("INCIDENT_REDIS_USERNAME"), Password: os.Getenv("INCIDENT_REDIS_PASSWORD")})
+	redisPassword, err := secretenv.Lookup(os.Getenv, "INCIDENT_REDIS_PASSWORD")
+	if err != nil {
+		return fail(err)
+	}
+	store, err := redisstate.New(redisstate.Config{Network: os.Getenv("INCIDENT_REDIS_NETWORK"), Address: os.Getenv("INCIDENT_REDIS_ADDRESS"), Namespace: os.Getenv("INCIDENT_REDIS_NAMESPACE"), Username: os.Getenv("INCIDENT_REDIS_USERNAME"), Password: redisPassword})
 	if err != nil {
 		return fail(err)
 	}
@@ -126,7 +132,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(err)
 	}
-	provider, err := modelhttp.New(modelhttp.Config{Endpoint: endpoint, Model: model, APIKey: os.Getenv("INCIDENT_MODEL_API_KEY"), Profile: profile})
+	apiKey, err := secretenv.Lookup(os.Getenv, "INCIDENT_MODEL_API_KEY")
+	if err != nil {
+		return fail(err)
+	}
+	provider, err := modelhttp.New(modelhttp.Config{Endpoint: endpoint, Model: model, APIKey: apiKey, Profile: profile})
 	if err != nil {
 		return fail(err)
 	}
@@ -164,7 +174,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if _, err := rand.Read(random[:]); err != nil {
 		return fail(err)
 	}
-	w := worker.Worker{Store: store, Owner: hex.EncodeToString(random[:]), Build: func(_ context.Context, job worker.Job) (investigation.Provider, investigation.Querier, error) {
+	w := worker.Worker{Store: store, Owner: hex.EncodeToString(random[:]), Logger: slog.New(slog.NewJSONHandler(stderr, nil)), Build: func(_ context.Context, job worker.Job) (investigation.Provider, investigation.Querier, error) {
 		if job.Model != model || job.Window != window || job.ProviderID != providerID || job.FixtureDigest != src.digest || job.TelemetryID != src.telemetryID {
 			return nil, nil, errors.New("worker configuration does not match frozen job")
 		}

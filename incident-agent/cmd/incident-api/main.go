@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/redisstate"
 	"github.com/hughtaiyaki/incident-agent/internal/app"
 	"github.com/hughtaiyaki/incident-agent/internal/app/worker"
+	"github.com/hughtaiyaki/incident-agent/internal/secretenv"
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
@@ -27,7 +29,30 @@ const (
 	minTokenBytes = 32
 )
 
-func main() { os.Exit(run()) }
+func main() {
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck(os.Getenv))
+	}
+	os.Exit(run())
+}
+
+// healthcheck probes the local listener for container runtimes; the image has no shell or curl.
+func healthcheck(getenv func(string) string) int {
+	_, port, err := net.SplitHostPort(address(getenv))
+	if err != nil {
+		return 1
+	}
+	client := http.Client{Timeout: 2 * time.Second}
+	response, err := client.Get("http://" + net.JoinHostPort("127.0.0.1", port) + "/healthz") //nolint:noctx // Bounded by the client timeout.
+	if err != nil {
+		return 1
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
+}
 
 func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -68,7 +93,10 @@ func address(getenv func(string) string) string {
 // loadDeps enables the investigation API only when a token is set. Identity must
 // match the worker's configuration, or the worker will refuse the jobs it finds.
 func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
-	token := getenv("INCIDENT_API_TOKEN")
+	token, err := secretenv.Lookup(getenv, "INCIDENT_API_TOKEN")
+	if err != nil {
+		return nil, nil, err
+	}
 	if token == "" {
 		return nil, func() {}, nil
 	}
@@ -92,13 +120,17 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 	if prometheus == "" || loki == "" || jaeger == "" {
 		return nil, nil, errors.New("explicit INCIDENT_PROMETHEUS_URL, INCIDENT_LOKI_URL and INCIDENT_JAEGER_URL required")
 	}
-	store, err := redisstate.New(redisstate.Config{Network: getenv("INCIDENT_REDIS_NETWORK"), Address: getenv("INCIDENT_REDIS_ADDRESS"), Namespace: getenv("INCIDENT_REDIS_NAMESPACE"), Username: getenv("INCIDENT_REDIS_USERNAME"), Password: getenv("INCIDENT_REDIS_PASSWORD")})
+	redisPassword, err := secretenv.Lookup(getenv, "INCIDENT_REDIS_PASSWORD")
+	if err != nil {
+		return nil, nil, err
+	}
+	store, err := redisstate.New(redisstate.Config{Network: getenv("INCIDENT_REDIS_NETWORK"), Address: getenv("INCIDENT_REDIS_ADDRESS"), Namespace: getenv("INCIDENT_REDIS_NAMESPACE"), Username: getenv("INCIDENT_REDIS_USERNAME"), Password: redisPassword})
 	if err != nil {
 		return nil, nil, err
 	}
 	deps := &httpapi.Deps{
 		Token: token, Store: store, MaxActive: maxActive, Readiness: store.Readiness,
-		Now: time.Now,
+		Now: time.Now, Stats: store.Stats,
 		Template: worker.Template{
 			Model: model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
 			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: telemetry.DefaultPolicy().Services,

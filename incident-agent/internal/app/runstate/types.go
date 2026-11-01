@@ -76,6 +76,33 @@ type Heartbeater interface {
 	Heartbeat(ctx context.Context, owner string) error
 }
 
+// RunOutcome is one finished run's contribution to the operational counters.
+type RunOutcome struct {
+	Status          string
+	ModelCalls      int
+	ChargedTokens   int
+	BackendRequests int
+}
+
+// Recorder is implemented by stores that keep operational counters. Counters are
+// best effort: they are not part of the run's transaction and may undercount after a crash.
+type Recorder interface {
+	RecordOutcome(ctx context.Context, outcome RunOutcome) error
+	RecordBlocked(ctx context.Context) error
+}
+
+// Stats is a point-in-time operational view of the store.
+type Stats struct {
+	Ready         int64
+	Leased        int64
+	ExpiredLeases int64
+	OldestReadyMS int64
+	UsedMemory    int64
+	MaxMemory     int64
+	WorkerAlive   bool
+	Counters      map[string]int64
+}
+
 // Store atomically executes commands and discovers bounded ready/expired candidates.
 type Store interface {
 	Execute(context.Context, Command) (Reply, error)

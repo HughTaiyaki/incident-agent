@@ -36,6 +36,8 @@ type Deps struct {
 	MaxActive int
 	Readiness func(context.Context) []string
 	Now       func() time.Time
+	// Stats enables GET /metrics; the endpoint requires the same token as the API.
+	Stats func(context.Context) (runstate.Stats, error)
 }
 
 // NewRouter returns the routes exposed by the incident API. Without deps only
@@ -54,6 +56,9 @@ func NewRouter(deps *Deps) http.Handler {
 		mux.Handle("GET /v1/runs/{id}/report", a.authenticated(a.report))
 		mux.Handle("GET /v1/runs/{id}/evidence/{query_id}", a.authenticated(a.evidence))
 		mux.Handle("POST /v1/runs/{id}/cancel", a.authenticated(a.cancel))
+		if deps.Stats != nil {
+			mux.Handle("GET /metrics", a.authenticated(a.metrics))
+		}
 	}
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		if reasons := readiness(r.Context()); len(reasons) > 0 {

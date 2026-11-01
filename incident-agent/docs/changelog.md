@@ -1,5 +1,11 @@
 # 文档维护记录
 
+## 2026-11-02 · 部署与运维
+
+- [任务 0011](../tasks/0011-deployment-operations.md)：镜像、Compose、`/metrics`、告警规则、部署指南和值班手册；发布检查增加密钥扫描，CI 增加整栈冒烟测试。尚未在正式环境部署。
+- 决定：常驻 Worker 跳过损坏、未知版本和配置不匹配的 Run 并告警，不再退出。之前的“停止并阻塞”会让一个坏 Run 拖垮整个服务；Run 仍保留并占名额，由人处理。
+- 决定：`INCIDENT_MAX_ACTIVE_RUNS` 建议从 2 开始、不超过 8，依据是单机测量和串行 Worker，不是生产压测，见[部署指南](operations/deployment.md#3-容量取值)。
+
 ## 2026-11-02 · DeepSeek 联调
 
 - 完成 [任务 0009](../tasks/0009-online-investigation.md)的供应商兼容性：操作员选定 DeepSeek，密钥只从环境变量读取。在线后端加真实模型的完整运行待后端恢复后补跑。

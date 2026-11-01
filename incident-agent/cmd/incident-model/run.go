@@ -13,6 +13,7 @@ import (
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
 	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
+	"github.com/hughtaiyaki/incident-agent/internal/secretenv"
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
@@ -61,8 +62,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "INCIDENT_MODEL_CONTEXT_WINDOW must be configured explicitly")
 		return 2
 	}
+	apiKey, err := secretenv.Lookup(os.Getenv, "INCIDENT_MODEL_API_KEY")
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return 2
+	}
 	client, err := modelhttp.New(modelhttp.Config{Endpoint: os.Getenv("INCIDENT_MODEL_ENDPOINT"),
-		APIKey: os.Getenv("INCIDENT_MODEL_API_KEY"), Model: model, Profile: os.Getenv("INCIDENT_MODEL_API_PROFILE")})
+		APIKey: apiKey, Model: model, Profile: os.Getenv("INCIDENT_MODEL_API_PROFILE")})
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2

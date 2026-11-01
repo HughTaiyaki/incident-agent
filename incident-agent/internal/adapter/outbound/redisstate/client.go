@@ -9,6 +9,8 @@ import (
 	"net"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -231,4 +233,74 @@ func (c *Client) CheckPersistence(ctx context.Context) error {
 		return errors.New("redis state: requires an explicit maxmemory")
 	}
 	return nil
+}
+
+const statsScript = `local t=redis.call('TIME'); local now=t[1]*1000+math.floor(t[2]/1000)
+local oldest=redis.call('ZRANGE',KEYS[1],0,0,'WITHSCORES')
+return {redis.call('ZCARD',KEYS[1]),redis.call('ZCARD',KEYS[2]),redis.call('ZCOUNT',KEYS[2],'-inf',now),oldest[2] and now-tonumber(oldest[2]) or 0}`
+
+// RecordOutcome adds a finished run to the operational counters.
+func (c *Client) RecordOutcome(ctx context.Context, outcome runstate.RunOutcome) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	key := c.namespace + ":metrics"
+	pipe := c.redis.Pipeline()
+	pipe.HIncrBy(ctx, key, "runs:"+outcome.Status, 1)
+	pipe.HIncrBy(ctx, key, "model_calls", int64(outcome.ModelCalls))
+	pipe.HIncrBy(ctx, key, "charged_tokens", int64(outcome.ChargedTokens))
+	pipe.HIncrBy(ctx, key, "backend_requests", int64(outcome.BackendRequests))
+	if _, err := pipe.Exec(ctx); err != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// RecordBlocked counts a run the worker had to skip.
+func (c *Client) RecordBlocked(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	if err := c.redis.HIncrBy(ctx, c.namespace+":metrics", "runs_blocked", 1).Err(); err != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Stats reads queue depth, memory and counters for the metrics endpoint.
+func (c *Client) Stats(ctx context.Context) (runstate.Stats, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	values, err := c.redis.Eval(ctx, statsScript, []string{c.namespace + ":ready", c.namespace + ":leases"}).Int64Slice()
+	if err != nil || len(values) != 4 {
+		return runstate.Stats{}, ErrUnavailable
+	}
+	stats := runstate.Stats{Ready: values[0], Leased: values[1], ExpiredLeases: values[2], OldestReadyMS: values[3]}
+	info, err := c.redis.Info(ctx, "memory").Result()
+	if err != nil {
+		return runstate.Stats{}, ErrUnavailable
+	}
+	for _, line := range strings.Split(info, "\r\n") {
+		key, value, _ := strings.Cut(line, ":")
+		switch key {
+		case "used_memory":
+			stats.UsedMemory, _ = strconv.ParseInt(value, 10, 64)
+		case "maxmemory":
+			stats.MaxMemory, _ = strconv.ParseInt(value, 10, 64)
+		}
+	}
+	alive, err := c.redis.Exists(ctx, c.namespace+":worker:heartbeat").Result()
+	if err != nil {
+		return runstate.Stats{}, ErrUnavailable
+	}
+	stats.WorkerAlive = alive > 0
+	counters, err := c.redis.HGetAll(ctx, c.namespace+":metrics").Result()
+	if err != nil {
+		return runstate.Stats{}, ErrUnavailable
+	}
+	stats.Counters = make(map[string]int64, len(counters))
+	for key, value := range counters {
+		if n, err := strconv.ParseInt(value, 10, 64); err == nil {
+			stats.Counters[key] = n
+		}
+	}
+	return stats, nil
 }

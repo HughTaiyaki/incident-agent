@@ -20,6 +20,7 @@
 | 任务 | 最小阅读集 | 触发进一步阅读的条件 |
 | --- | --- | --- |
 | 生产开发进度、工具链与发布 | [生产路线](development/production-roadmap.md)、[发布检查](development/release-checks.md)、[任务 0007](../tasks/0007-production-baseline.md) | 容量/终态读[任务 0008](../tasks/0008-capacity-and-results.md)和 Worker 指南“准入与过载”；在线模式与真实联调读[任务 0009](../tasks/0009-online-investigation.md)和 Worker 指南“在线遥测模式”，再加载供应商/遥测文档 |
+| 部署、监控与值班 | [部署指南](operations/deployment.md)、[值班手册](operations/runbook.md)、[任务 0011](../tasks/0011-deployment-operations.md) | 改 Redis 配置读 [Redis 协议](development/redis-state.md) |
 | HTTP 入口、认证与就绪状态 | [任务 0010](../tasks/0010-http-entry.md)、[API 指南](development/http-api.md) | 调整接口读调查 §2；告警入口再读下方告警行 |
 | 运行或解释现有骨架 | [README](../README.md)“当前状态／运行现有骨架” | 改命令或配置：核对 Makefile、go.mod 和入口代码 |
 | 在线查询、匿名导出、离线回放 | [查询使用指南](integration/query-adapters.md) §1–4 | 验证现有样本读[接入报告](reports/0002-readonly-integration.md)；修改查询语义再读遥测专题 |

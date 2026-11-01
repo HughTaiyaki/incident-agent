@@ -38,3 +38,19 @@ jobs:
           git diff --exit-code -- go.mod go.sum
       - name: Required release checks
         run: make release-check
+  deploy-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: incident-agent
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check alert rules
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/prometheus:/rules:ro" \
+            prom/prometheus@sha256:451a845bae1d51622b41af1780eb2ad911bbb79a9855bc8e9bb67fabbc03f934 check rules /rules/alerts.yml
+      - name: Build images and run the stack
+        run: deploy/smoke.sh

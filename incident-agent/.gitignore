@@ -28,6 +28,9 @@ go.work.sum
 *.swo
 .DS_Store
 
+# Deployment secrets
+deploy/secrets/
+
 # Local runtime data
 tmp/
 data/

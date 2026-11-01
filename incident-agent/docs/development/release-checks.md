@@ -1,6 +1,6 @@
 # 工程发布检查
 
-更新：2026-11-01。对应[任务 0007](../../tasks/0007-production-baseline.md)与[生产路线 P0](production-roadmap.md)。这里的通过只代表程序与已知漏洞检查通过，不代表真实供应商或诊断效果已验收。
+更新：2026-11-02。对应[任务 0007](../../tasks/0007-production-baseline.md)与[生产路线 P0](production-roadmap.md)。这里的通过只代表程序与已知漏洞检查通过，不代表真实供应商或诊断效果已验收。
 
 ## 版本和环境
 
@@ -40,8 +40,10 @@ release-check 顺序执行：格式检查 → go mod verify → vet → race →
 
 仓库根[工作流](../../../.github/workflows/agent-release-check.yml)在 Agent 或其工作流变更时运行，也支持手动触发。工作目录为 incident-agent，Go 版本读取 go.mod；Actions 固定提交、contents:read、checkout 不保留凭据，30 分钟超时，同分支旧检查可取消。
 
+CI 另有 `deploy-smoke` 任务：用 promtool 校验告警规则，再运行 [smoke.sh](../../deploy/smoke.sh) 构建镜像、启动整栈、走完一个 Run 并重启。它使用临时凭据和不可达的模型地址，不需要密钥，也不外发数据。
+
 CI 安装 Redis 测试可执行程序，但测试只连接自己创建的 Unix socket。没有模型密钥、发布令牌、部署步骤，也没有商城实验。增加 go mod tidy 后差异检查，避免模块文件漂移。
 
 2026-11-01 首次远端运行通过：提交 `42c8f3f`，ubuntu-24.04，模块 tidy 差异检查和 `make release-check` 均成功，见[运行记录](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml)。仓库随后重建，该运行记录已不存在；重建后首次运行在提交 `75c2f49` 上[通过](https://github.com/HughTaiyaki/incident-agent/actions/runs/41315442725)，范围相同。之后的提交以各自的运行结果为准；本地 macOS 通过不能替代远端 Linux runner 结果。
 
-仓库[公开](https://github.com/HughTaiyaki/incident-agent)，提交前不得纳入本机绝对路径、个人邮箱、密钥或运行日志。根目录与项目 `.gitignore` 排除本地配置和 `data/`，提交者邮箱使用 GitHub noreply 地址。
+仓库[公开](https://github.com/HughTaiyaki/incident-agent)，提交前不得纳入本机绝对路径、个人邮箱、密钥或运行日志。`make check-secrets`（已包含在 `make release-check` 中）扫描 Git 会发布的文件，只报位置不回显内容；它只认常见格式，不能代替提交前的检查。根目录与项目 `.gitignore` 排除本地配置和 `data/`，提交者邮箱使用 GitHub noreply 地址。

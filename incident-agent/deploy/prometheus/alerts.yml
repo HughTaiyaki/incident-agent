@@ -1,0 +1,59 @@
+# Thresholds are starting points from the serial worker and 180-second deadline,
+# not from production traffic. Each alert has a section in docs/operations/runbook.md.
+groups:
+  - name: incident-agent
+    rules:
+      - alert: IncidentAgentMetricsDown
+        expr: up{job="incident-agent"} == 0
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: Incident API is not answering metrics scrapes
+          runbook: docs/operations/runbook.md#api-不可用
+      - alert: IncidentRedisDown
+        expr: incident_redis_up == 0
+        for: 1m
+        labels: {severity: page}
+        annotations:
+          summary: Agent Redis is not answering
+          runbook: docs/operations/runbook.md#redis-不可用
+      - alert: IncidentWorkerAbsent
+        expr: incident_worker_alive == 0
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: No worker heartbeat, so accepted runs are not progressing
+          runbook: docs/operations/runbook.md#worker-缺失
+      - alert: IncidentRunQueued
+        expr: incident_oldest_ready_age_seconds > 90
+        for: 1m
+        labels: {severity: warn}
+        annotations:
+          summary: A run has spent half its 180-second deadline waiting in the queue
+          runbook: docs/operations/runbook.md#排队过久
+      - alert: IncidentLeaseExpired
+        expr: incident_runs_expired_leases > 0
+        for: 2m
+        labels: {severity: warn}
+        annotations:
+          summary: A lease expired and nothing took the run over
+          runbook: docs/operations/runbook.md#worker-缺失
+      - alert: IncidentRunBlocked
+        expr: increase(incident_runs_blocked_total[10m]) > 0
+        labels: {severity: page}
+        annotations:
+          summary: A run is blocked and holding an admission slot
+          runbook: docs/operations/runbook.md#run-被阻塞
+      - alert: IncidentRedisMemoryHigh
+        expr: incident_redis_memory_used_bytes / incident_redis_memory_max_bytes > 0.8
+        for: 10m
+        labels: {severity: warn}
+        annotations:
+          summary: Agent Redis memory is above 80 percent; admission will start refusing runs
+          runbook: docs/operations/runbook.md#内存接近上限
+      - alert: IncidentModelTokensHigh
+        expr: increase(incident_model_tokens_total[1h]) > 200000
+        labels: {severity: warn}
+        annotations:
+          summary: Token spend is unusually high for this deployment
+          runbook: docs/operations/runbook.md#费用异常

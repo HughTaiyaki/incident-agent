@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -37,9 +38,10 @@ type Factory func(context.Context, Job) (investigation.Provider, investigation.Q
 // Worker owns at most one run at a time. Store fencing also protects against
 // overlapping replacement processes; no exactly-once external I/O is promised.
 type Worker struct {
-	Store runstate.Store
-	Owner string
-	Build Factory
+	Store  runstate.Store
+	Owner  string
+	Build  Factory
+	Logger *slog.Logger
 }
 
 // MaxActiveLimit is the protocol ceiling; deployments choose their own lower limit.
@@ -48,6 +50,14 @@ const MaxActiveLimit = 1024
 // ErrOverloaded means admission refused a new run and nothing was written.
 // Callers should retry later with the same ID rather than treat it as a failure of the run.
 var ErrOverloaded = errors.New("run admission overloaded")
+
+// ErrRunBlocked means one run cannot proceed for a reason that does not affect the
+// others: corrupt state, an unknown version or a configuration mismatch. The serving
+// loop skips it; one-shot callers see it as a failure.
+var ErrRunBlocked = errors.New("run blocked")
+
+// blockedLogInterval keeps a stuck run visible without logging it on every scan.
+const blockedLogInterval = time.Minute
 
 // errRunExists means the run ID is taken; nothing was written.
 var errRunExists = errors.New("run already exists")
@@ -96,6 +106,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	if beat, ok := w.Store.(runstate.Heartbeater); ok {
 		go heartbeat(ctx, beat, w.Owner)
 	}
+	lastLogged := map[string]time.Time{}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -104,9 +115,21 @@ func (w *Worker) Run(ctx context.Context) error {
 			return err
 		}
 		for _, id := range ids {
-			if err := w.Process(ctx, id); err != nil {
+			err := w.Process(ctx, id)
+			if errors.Is(err, ErrRunBlocked) {
+				if time.Since(lastLogged[id]) >= blockedLogInterval {
+					lastLogged[id] = time.Now()
+					w.logger().Error("run blocked", "run_id", id, "error", err)
+					if recorder, ok := w.Store.(runstate.Recorder); ok {
+						_ = recorder.RecordBlocked(ctx)
+					}
+				}
+				continue
+			}
+			if err != nil {
 				return err
 			}
+			delete(lastLogged, id)
 		}
 		select {
 		case <-ctx.Done():
@@ -143,23 +166,23 @@ func (w *Worker) Process(ctx context.Context, id string) error {
 		return nil
 	}
 	if reply.Code != "OK" || reply.State == nil {
-		return fmt.Errorf("%w: run %s: claim %s", investigation.ErrPersistence, id, reply.Code)
+		return fmt.Errorf("%w: %w: run %s: claim %s", ErrRunBlocked, investigation.ErrPersistence, id, reply.Code)
 	}
 	s := &session{store: w.Store, state: *reply.State}
 	var job Job
 	if json.Unmarshal([]byte(s.state.Request), &job) != nil || job.Version != jobVersion {
-		return fmt.Errorf("%w: run %s: unreadable job", investigation.ErrInvalidInput, id)
+		return fmt.Errorf("%w: %w: run %s: unreadable job", ErrRunBlocked, investigation.ErrInvalidInput, id)
 	}
 	run := investigation.Run{ID: id, Request: job.Request, Status: "RUNNING", CreatedAt: time.UnixMilli(s.state.Created).UTC(), DeadlineAt: time.UnixMilli(s.state.Deadline).UTC()}
 	cp := investigation.NewCheckpoint(run)
 	if s.state.Checkpoint != "" {
 		if json.Unmarshal([]byte(s.state.Checkpoint), &cp) != nil || cp.Run.ID != id || cp.Run.DeadlineAt.UnixMilli() != s.state.Deadline {
-			return investigation.ErrInvalidInput
+			return fmt.Errorf("%w: %w: run %s: unreadable checkpoint", ErrRunBlocked, investigation.ErrInvalidInput, id)
 		}
 		old, _ := json.Marshal(cp.Run.Request)
 		current, _ := json.Marshal(job.Request)
 		if string(old) != string(current) {
-			return investigation.ErrInvalidInput
+			return fmt.Errorf("%w: %w: run %s: checkpoint request mismatch", ErrRunBlocked, investigation.ErrInvalidInput, id)
 		}
 	}
 	// No provider creation is required to close expired/cancelled runs.
@@ -168,11 +191,11 @@ func (w *Worker) Process(ctx context.Context, id string) error {
 		if s.state.Cancelled {
 			reason = "CANCELLED"
 		}
-		return s.complete(ctx, investigation.Stopped(cp.Run, reason))
+		return w.finish(ctx, s, investigation.Stopped(cp.Run, reason))
 	}
 	provider, querier, err := w.Build(ctx, job)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: run %s: %w", ErrRunBlocked, id, err)
 	}
 	workCtx, cancel := context.WithCancel(ctx)
 	done := make(chan struct{})
@@ -225,7 +248,31 @@ func (w *Worker) Process(ctx context.Context, id string) error {
 	} else if result.Status == "CANCELLED" {
 		return investigation.ErrPersistence
 	}
-	return s.complete(ctx, result)
+	return w.finish(ctx, s, result)
+}
+
+// finish publishes the terminal state, then reports it. Reporting cannot fail the run:
+// the terminal state is already durable and is the source of truth.
+func (w *Worker) finish(ctx context.Context, s *session, run investigation.Run) error {
+	if err := s.complete(ctx, run); err != nil {
+		return err
+	}
+	outcome := runstate.RunOutcome{Status: s.state.Status, ModelCalls: s.state.ModelCalls, ChargedTokens: s.state.Tokens, BackendRequests: s.state.Requests}
+	if recorder, ok := w.Store.(runstate.Recorder); ok {
+		if err := recorder.RecordOutcome(ctx, outcome); err != nil {
+			w.logger().Warn("run counters not updated", "run_id", s.state.ID)
+		}
+	}
+	w.logger().Info("run finished", "run_id", s.state.ID, "status", outcome.Status, "stop_reason", run.Report.StopReason,
+		"result", run.Report.Result, "model_calls", outcome.ModelCalls, "charged_tokens", outcome.ChargedTokens, "backend_requests", outcome.BackendRequests)
+	return nil
+}
+
+func (w *Worker) logger() *slog.Logger {
+	if w.Logger != nil {
+		return w.Logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 type session struct {

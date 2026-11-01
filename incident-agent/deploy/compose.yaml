@@ -1,0 +1,129 @@
+# Agent state on its own Redis, never the mall cache. Required values and secrets are
+# described in docs/operations/deployment.md; nothing here has a usable default.
+name: incident-agent
+
+x-agent: &agent
+  build:
+    context: ..
+  image: incident-agent:local
+  user: "65532:1000" # Group 1000 is the Redis image's group, which owns the socket.
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  pids_limit: 128
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  volumes:
+    - redis-socket:/run/redis
+  environment: &agent-env
+    INCIDENT_REDIS_NETWORK: unix
+    INCIDENT_REDIS_ADDRESS: /run/redis/redis.sock
+    INCIDENT_REDIS_NAMESPACE: incident
+    INCIDENT_MAX_ACTIVE_RUNS: ${INCIDENT_MAX_ACTIVE_RUNS:?set in deploy/.env}
+    INCIDENT_MODEL_ENDPOINT: ${INCIDENT_MODEL_ENDPOINT:?set in deploy/.env}
+    INCIDENT_MODEL_NAME: ${INCIDENT_MODEL_NAME:?set in deploy/.env}
+    INCIDENT_MODEL_CONTEXT_WINDOW: ${INCIDENT_MODEL_CONTEXT_WINDOW:?set in deploy/.env}
+    INCIDENT_MODEL_API_PROFILE: ${INCIDENT_MODEL_API_PROFILE:-openai}
+    INCIDENT_PROMETHEUS_URL: ${INCIDENT_PROMETHEUS_URL:?set in deploy/.env}
+    INCIDENT_LOKI_URL: ${INCIDENT_LOKI_URL:?set in deploy/.env}
+    INCIDENT_JAEGER_URL: ${INCIDENT_JAEGER_URL:?set in deploy/.env}
+
+services:
+  # The socket volume starts root-owned; only this one-shot step needs to change that.
+  redis-socket-init:
+    image: &redis-image redis:8.8.4-alpine@sha256:ab669f1420eaa05360a417b24f3bd210c9272e2c79a4bb35d3e50b4bfd50dbee
+    user: "0:0"
+    network_mode: none
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    entrypoint: ["/bin/sh", "-c", "chown 999:1000 /run/redis && chmod 750 /run/redis"]
+    volumes:
+      - redis-socket:/run/redis
+
+  redis:
+    image: *redis-image
+    user: "999:1000"
+    read_only: true
+    network_mode: none # Reachable only through the socket volume.
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    mem_limit: ${INCIDENT_REDIS_CONTAINER_MEMORY:?set in deploy/.env}
+    pids_limit: 128
+    depends_on:
+      redis-socket-init:
+        condition: service_completed_successfully
+    command:
+      - redis-server
+      - --port
+      - "0"
+      - --unixsocket
+      - /run/redis/redis.sock
+      - --unixsocketperm
+      - "770"
+      - --dir
+      - /data
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory-policy
+      - noeviction
+      - --maxmemory
+      - ${INCIDENT_REDIS_MAXMEMORY:?set in deploy/.env}
+      - --save
+      - ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "-s", "/run/redis/redis.sock", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - redis-data:/data
+      - redis-socket:/run/redis
+
+  api:
+    <<: *agent
+    entrypoint: ["/usr/local/bin/incident-api"]
+    mem_limit: 256m
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *agent-env
+      INCIDENT_API_BIND: 0.0.0.0
+      PORT: "8080"
+      INCIDENT_API_TOKEN_FILE: /run/secrets/incident_api_token
+    secrets: [incident_api_token]
+    # Plain HTTP carries the token: publish on loopback and put TLS in front for anything else.
+    ports:
+      - "127.0.0.1:${INCIDENT_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/incident-api", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  worker:
+    <<: *agent
+    entrypoint: ["/usr/local/bin/incident-worker", "-mode", "work", "-live"]
+    mem_limit: 512m
+    # Leave time to stop new calls; an interrupted run is taken over after its lease.
+    stop_grace_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *agent-env
+      INCIDENT_MODEL_API_KEY_FILE: /run/secrets/incident_model_api_key
+    secrets: [incident_model_api_key]
+
+secrets:
+  incident_api_token:
+    file: ./secrets/incident_api_token
+  incident_model_api_key:
+    file: ./secrets/incident_model_api_key
+
+volumes:
+  redis-data:
+  redis-socket:

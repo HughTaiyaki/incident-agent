@@ -53,7 +53,7 @@ export INCIDENT_JAEGER_URL=http://127.0.0.1:16686
 | 查询结果超出存储额度 | 证据记 `RESULT_TOO_LARGE`，不保存记录，Run 继续 |
 | Redis 错误 | Worker 退出，由监督进程重启，见第 3 节 |
 
-HTTP 入口见 [API 指南](http-api.md)；API 与 Worker 必须使用相同的模型和后端配置。`work` 常驻模式每 5 秒写一次心跳供 readyz 判断，`-once` 不写。
+HTTP 入口见 [API 指南](http-api.md)；API 与 Worker 必须使用相同的模型和后端配置。`work` 常驻模式每 5 秒写一次心跳供 readyz 判断，`-once` 不写。部署见[部署指南](../operations/deployment.md)。
 
 `-mode evidence` 输出含真实业务 ID 的证据，只应留在操作员本地。需要留存或分享时用：
 
@@ -63,7 +63,7 @@ HTTP 入口见 [API 指南](http-api.md)；API 与 Worker 必须使用相同的�
 
 export 输出匿名 Bundle，权限 0600，不覆盖已有文件，只有确认运行版本时才传 `-upstream-sha`。匿名化会重算记录 ID，因此报告里的 evidence_ids 不能和导出内容直接对应。
 
-支持 Redis username/password 环境变量。当前 CLI 支持 Unix socket 或回环 IP TCP，未暴露远程 TLS 参数；Redis Go Adapter 自身支持 TLS。不默认选地址，不修改现有 Redis 配置，也不自动启动 Redis。
+支持 Redis username/password 环境变量；密码和模型密钥也可用 `*_FILE` 指向文件。当前 CLI 支持 Unix socket 或回环 IP TCP，未暴露远程 TLS 参数；Redis Go Adapter 自身支持 TLS。不默认选地址，不修改现有 Redis 配置，也不自动启动 Redis。
 
 ```sh
 ./bin/incident-worker -mode status -id investigation-001
@@ -122,13 +122,13 @@ Harness checkpoint 保存 Run、next_step、phase、feedback、stop_reason、重
 
 Worker 串行处理 Run（并发 1，小于设计上限 2），启动及每秒扫描 ready/expired leases，15 秒租约、5 秒续租。索引只提供候选，Claim 才授予所有权。运行中取消可由下一次 Begin 或续租发现；在途请求只能尽力取消，不能宣称撤销供应商计费。
 
-SIGINT/SIGTERM 使进程停止新调用并退出，活跃 Run 留给租约到期后的接管；**进程退出不写成用户取消**。取消/到期任务接管时不创建 Provider，以确定性状态收尾。Redis 错误或配置不匹配使 Worker 返回非零，需监督进程报告/重启；当前不在内部无限重试。`-once` 处理一次候选扫描后退出，适合验证，不会等到下一次租约到期。
+SIGINT/SIGTERM 使进程停止新调用并退出，活跃 Run 留给租约到期后的接管；**进程退出不写成用户取消**。取消/到期任务接管时不创建 Provider，以确定性状态收尾。Redis 错误使 Worker 返回非零，需监督进程报告/重启；当前不在内部无限重试。配置不匹配只影响对应 Run，见下文。`-once` 处理一次候选扫描后退出，适合验证，不会等到下一次租约到期。
 
 每个 API 操作只有一次 EVAL，没有自动写重试。遇到未确认提交先停止外部工作；Worker 收尾前 read 确认状态，重启后重新读取 checkpoint/operations。若已提交终态，即便原进程返回非零，status 仍是事实来源。
 
 当前容量：调用结果合计 2MiB、checkpoint 3MiB、完整编码状态 7MiB、请求/响应编码上限 8MiB；checkpoint 中的实际证据仍受 Harness 2MiB 限制。40 条操作上限对应最多 12 次模型、12 次工具以及 16 次实际请求。容量拒绝停止调用并保留可恢复状态；全局准入见上文“准入与过载”。新增快照冗余会增加 Redis 内存需求，未做吞吐/容量基准。
 
-损坏或未知版本的活跃 Run 不会被自动丢弃：它继续占用名额，Worker 扫描到时返回带 Run ID 和响应码的非零错误并停止，修复前会阻塞其他 Run，需操作员人工处理。没有状态的残留索引条目在下次 Claim 时清理并释放名额。
+损坏、未知版本或配置不匹配的活跃 Run 不会被自动丢弃：它继续占用名额，常驻 Worker 记录 `run blocked`（每个 Run 每分钟一次）并跳过，其他 Run 不受影响；`-once` 返回带 Run ID 和响应码的非零错误。配置不匹配的 Run 到 deadline 后自动收尾，其余需要人工处理，见[值班手册](../operations/runbook.md#run-被阻塞)。没有状态的残留索引条目在下次 Claim 时清理并释放名额。
 
 ## 4. 验证与生产限制
 

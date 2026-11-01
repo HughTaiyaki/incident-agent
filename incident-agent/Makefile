@@ -57,7 +57,11 @@ help:
 test-redis:
 	$(GO) test -race -tags=redisintegration ./internal/adapter/outbound/redisstate -count=1
 
-.PHONY: check-fmt lint-redis security release-check
+.PHONY: check-fmt check-secrets lint-redis security release-check
+## check-secrets: Reject credentials in files that Git would publish.
+check-secrets:
+	$(GO) run ./internal/checks/secrets
+
 ## check-fmt: Reject unformatted files without modifying them.
 check-fmt:
 	$(GO) run ./internal/checks/format
@@ -74,6 +78,7 @@ security:
 ## release-check: Run required local publication checks; never deploy or publish.
 release-check:
 	$(MAKE) check-fmt
+	$(MAKE) check-secrets
 	$(GO) mod verify
 	$(MAKE) vet
 	$(MAKE) test-race

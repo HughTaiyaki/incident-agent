@@ -1,6 +1,6 @@
 # 文档索引
 
-更新：2026-11-01。当前方向是复用已完成的 GoFrame 商城，构建只读诊断 Agent；三源查询 CLI 与回放已实现，离线 Harness 已实现，模型 Provider/预算已实现、真实联调待验收；[任务 0007](../tasks/0007-production-baseline.md)和[任务 0008](../tasks/0008-capacity-and-results.md)工程验收已完成（本机与远端 CI 通过），进行中的切片为[任务 0009](../tasks/0009-online-investigation.md)（供应商联调待配置）和[任务 0010](../tasks/0010-http-entry.md)（工程部分已本地验证），日志结构聚合已接入离线 Harness，任务 0002 的故障案例验收仍未完成。
+更新：2026-11-02。当前方向是复用已完成的 GoFrame 商城，构建只读诊断 Agent；三源查询 CLI 与回放已实现，离线 Harness 已实现，模型 Provider/预算已实现、DeepSeek 兼容性已联调；[任务 0007](../tasks/0007-production-baseline.md)和[任务 0008](../tasks/0008-capacity-and-results.md)工程验收已完成（本机与远端 CI 通过），进行中的切片为[任务 0009](../tasks/0009-online-investigation.md)（在线完整运行待补跑）、[任务 0010](../tasks/0010-http-entry.md)（工程部分已验证）和[任务 0011](../tasks/0011-deployment-operations.md)（部署环境待验证），日志结构聚合已接入离线 Harness，任务 0002 的故障案例验收仍未完成。
 
 ## 从这里选择入口
 
@@ -8,7 +8,8 @@
 
 | 要解决的问题 | 首选入口 | 何时继续深入 |
 | --- | --- | --- |
-| 本轮开发改了什么 | [任务 0010 HTTP 入口](reports/0010-http-entry.md) | 含本机真实后端运行；在线模式见[任务 0009 报告](reports/0009-online-investigation.md) |
+| 本轮开发改了什么 | [任务 0011 部署与运维](reports/0011-deployment-operations.md) | DeepSeek 联调见[任务 0009 报告](reports/0009-online-investigation.md#deepseek-联调)，API 见[任务 0010 报告](reports/0010-http-entry.md) |
+| 如何部署和值班 | [部署指南](operations/deployment.md)、[值班手册](operations/runbook.md) | 取舍和验收状态见[任务 0011](../tasks/0011-deployment-operations.md) |
 | 如何调用调查 API | [API 指南](development/http-api.md) | 目标接口全集见调查协议 §2 |
 | 当前能运行什么 | [README](../README.md) | 要修改实现时，再定位代码和当前任务 |
 | 如何查询遥测、导出和回放 | [查询 Adapter 使用指南](integration/query-adapters.md) | 实测范围与缺口见[接入报告](reports/0002-readonly-integration.md) |
