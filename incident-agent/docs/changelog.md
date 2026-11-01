@@ -2,7 +2,7 @@
 
 ## 2026-11-02 · 部署与运维
 
-- [任务 0011](../tasks/0011-deployment-operations.md)：镜像、Compose、`/metrics`、告警规则、部署指南和值班手册；发布检查增加密钥扫描，CI 增加整栈冒烟测试。尚未在正式环境部署。
+- [任务 0011](../tasks/0011-deployment-operations.md)：镜像、Compose、`/metrics`、告警规则、部署指南和值班手册；发布检查增加密钥扫描，CI 增加整栈冒烟测试。[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41326433875) 通过，尚未在正式环境部署。
 - 决定：常驻 Worker 跳过损坏、未知版本和配置不匹配的 Run 并告警，不再退出。之前的“停止并阻塞”会让一个坏 Run 拖垮整个服务；Run 仍保留并占名额，由人处理。
 - 决定：`INCIDENT_MAX_ACTIVE_RUNS` 建议从 2 开始、不超过 8，依据是单机测量和串行 Worker，不是生产压测，见[部署指南](operations/deployment.md#3-容量取值)。
 

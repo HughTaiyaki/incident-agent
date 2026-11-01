@@ -1,6 +1,6 @@
 # 任务 0011：部署与运维
 
-日期：2026-11-02。状态：**工程切片已实现，本机检查通过，容器部分待远端 CI 确认；未在正式环境部署。** 对应[路线 P4](../docs/development/production-roadmap.md)。
+日期：2026-11-02。状态：**工程切片已实现，本机检查和[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41326433875)通过；未在正式环境部署。** 对应[路线 P4](../docs/development/production-roadmap.md)。
 
 ## 范围
 
@@ -23,12 +23,12 @@
 
 | 门槛 | 状态 |
 | --- | --- |
-| 独立 Redis 部署 | CI 冒烟测试，待确认 |
+| 独立 Redis 部署 | 通过：CI 冒烟测试实际启动 |
 | 密钥注入 | 通过：文件方式有单元测试，Compose 使用 secrets；扫描进入发布检查 |
 | 备份恢复演练 | 部分：Redis 层有集成测试，`tar` 与数据卷命令未实际运行 |
-| 滚动重启演练 | 通过：Redis 重启、Worker 接管有集成测试；整栈重启在 CI 冒烟测试中，待确认 |
+| 滚动重启演练 | 通过：Redis 重启、Worker 接管有集成测试；整栈重启后 Run 仍可读取，CI 冒烟测试通过 |
 | 资源上限 | 已配置，由 CI 启动验证；未测超限行为 |
-| 指标与告警 | 指标有集成测试；规则由 promtool 校验，待确认；投递未演练 |
+| 指标与告警 | 指标有集成测试；规则由 promtool 校验通过；投递未演练 |
 | 值班和回滚说明 | [值班手册](../docs/operations/runbook.md)、[部署指南](../docs/operations/deployment.md) |
 | 容量演练 | 单机测量见部署指南第 3 节；不是生产压测 |
 | 在部署环境运行 | **未验证** |

@@ -29,7 +29,7 @@ Lua 状态协议和 schema 未变。没有新增 Go 依赖，没有修改商城�
 
 ## 验证记录
 
-环境：macOS arm64，Go 1.26.10，独立 Redis 8.0.2。**本机 Docker 未运行，镜像和 Compose 没有在本机启动过**，只做了 `docker compose config`，由 CI 的 `deploy-smoke` 任务实际运行。
+环境：macOS arm64，Go 1.26.10，独立 Redis 8.0.2。**本机 Docker 未运行，镜像和 Compose 没有在本机启动过**，只做了 `docker compose config`。[CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41326433875) 的 `deploy-smoke` 在 ubuntu-24.04 上通过：promtool 校验规则，构建镜像，整栈启动，无 Token 被拒，一个 Run 在模型和后端都不可达时以 INCONCLUSIVE 收尾，指标正确，三个服务重启后 Run 仍可读取。`make release-check` 同时通过。
 
 | 演练（真实 Redis） | 结果 |
 | --- | --- |

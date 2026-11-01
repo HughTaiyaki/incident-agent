@@ -1,6 +1,6 @@
 # 部署指南
 
-更新：2026-11-02。状态：**镜像和 Compose 由 CI 冒烟测试验证，尚未在正式环境部署过。** 故障处理见[值班手册](runbook.md)，取舍和测量见[任务 0011](../../tasks/0011-deployment-operations.md)。
+更新：2026-11-02。状态：**镜像和 Compose 通过 CI 冒烟测试，尚未在正式环境部署过。** 故障处理见[值班手册](runbook.md)，取舍和测量见[任务 0011](../../tasks/0011-deployment-operations.md)。
 
 ## 1. 组成
 
