@@ -52,7 +52,7 @@ Job 版本仍是 worker-v1，新增字段可选，已有 Run 可继续读取。
 
 保护有效性核对：临时去掉结果大小判断后，超大结果测试以 `CAPACITY` 失败，恢复后通过。其余保护没有逐项做这种反向验证。
 
-本机 `make release-check` 退出 0：格式、模块校验、vet、race、lint、Redis 回归 136.6s、五个命令构建，普通与 Redis 标签漏洞扫描均为 `No vulnerabilities found.`。改动尚未提交，远端 CI 未运行。
+本机 `make release-check` 退出 0：格式、模块校验、vet、race、lint、Redis 回归 136.6s、五个命令构建，普通与 Redis 标签漏洞扫描均为 `No vulnerabilities found.`。代码随提交 `deb4279` 入库，[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41298824484) 在 ubuntu-24.04 通过。CI 同样只用模拟服务。
 
 ## 未验证与限制
 
