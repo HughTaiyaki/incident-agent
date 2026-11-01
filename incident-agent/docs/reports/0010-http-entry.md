@@ -1,6 +1,6 @@
 # 阶段 0010：HTTP 调查入口改动报告
 
-日期：2026-11-01。对应[任务 0010](../../tasks/0010-http-entry.md)与[生产路线 P3](../development/production-roadmap.md)。同轮还修复了持久模式的 Token 结算，并在真实遥测后端上运行了任务 0009 的流程。**工作区尚未提交，远端 CI 未运行。**
+日期：2026-11-01。对应[任务 0010](../../tasks/0010-http-entry.md)与[生产路线 P3](../development/production-roadmap.md)。同轮还修复了持久模式的 Token 结算，并在真实遥测后端上运行了任务 0009 的流程。代码随提交 `28f474e`（结算）和 `75c2f49`（入口）入库，[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41315442725) 在 ubuntu-24.04 通过。
 
 ## 修改前后
 

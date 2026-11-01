@@ -58,4 +58,5 @@ IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当�
 - 行为变化添加必要回归测试，不削弱断言；契约变化同步所属专题和受影响入口，重要决定记入 [changelog](docs/changelog.md)。
 - 当前命令：`make build`、`make fmt`、`make vet`、`make test`、`make test-race`、`make lint`、`make verify`、`make run`、`make test-integration`、`make test-redis`、`make release-check`、`make security`；依赖与选择方式见[验证规则](docs/development/workflow.md)。
 - 仓库公开：提交内容不得含本机绝对路径、个人邮箱、密钥或运行日志，提交者邮箱使用 GitHub noreply 地址。
+- 大功能完成并通过检查后推送远端；提交信息用 Conventional Commits：`<type>(<scope>): <中文摘要>`，正文写原因和影响，不兼容变更标 `BREAKING CHANGE:`。
 - 文档改动检查链接、事实、状态和交叉引用即可；明确未运行项。不得把源码核对、上游结果、目标设计写成本地实测；尚无 eval/demo 命令。

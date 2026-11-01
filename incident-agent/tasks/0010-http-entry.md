@@ -1,6 +1,6 @@
 # 任务 0010：受控 HTTP 调查入口
 
-日期：2026-11-01。状态：工程切片已实现并通过本地验证，部署入口待 P4。对应[路线 P3](../docs/development/production-roadmap.md)。
+日期：2026-11-01。状态：工程切片已实现，本机验证与[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41315442725) 均通过，部署入口待 P4。对应[路线 P3](../docs/development/production-roadmap.md)。
 
 [任务 0009](0009-online-investigation.md)的真实供应商联调要等外部配置，而本任务不依赖它，所以并行推进。P2 的门槛不因此放宽。
 
