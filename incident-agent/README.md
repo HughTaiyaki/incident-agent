@@ -13,7 +13,7 @@
 - **恢复能力：**[任务 0006](tasks/0006-redis-recovery.md)已接入独立 Redis、Harness checkpoint 与可恢复 Worker；运行 `make test-redis`，见[协议与限制](docs/development/redis-state.md)。持久入口为 `incident-worker`，见[运行与恢复指南](docs/development/worker-recovery.md)；旧 CLI 仍为内存模式。
 - **工程基线已验证：**[任务 0007](tasks/0007-production-baseline.md)已升级至 Go 1.26.10，完整 `make release-check` 通过，普通与 Redis 标签漏洞扫描均无可达漏洞报告；[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml) 通过。
 - **容量与终态已验证：**[任务 0008](tasks/0008-capacity-and-results.md)增加全局 Run 准入、内存预留和版本化结果投影，本机与远端 `make release-check` 通过；尚未压测，不提供生产容量推荐值。
-- **在线持久调查：**[任务 0009](tasks/0009-online-investigation.md)为 `incident-worker` 增加 `-live`，已用本地模拟服务验证失败与恢复路径，并在本机真实后端上配合脚本模型跑通；DeepSeek 兼容性已联调，**诊断效果未评测**，在线后端加真实模型的完整运行待补跑。
+- **在线持久调查：**[任务 0009](tasks/0009-online-investigation.md)为 `incident-worker` 增加 `-live`，已用本地模拟服务验证失败与恢复路径，并在本机真实后端上配合脚本模型跑通；在线后端加 DeepSeek 的完整运行、恢复和遮蔽均已验证；**诊断效果未评测**。
 - **HTTP 入口：**[任务 0010](tasks/0010-http-entry.md)提供 Token 校验、按 alert_id 幂等和真实 readyz，本机验证和远端 CI 通过。
 - **部署与运维：**[任务 0011](tasks/0011-deployment-operations.md)提供镜像、Compose、指标、告警和[值班手册](docs/operations/runbook.md)，用法见[部署指南](docs/operations/deployment.md)；尚未在正式环境部署。后续按[生产路线](docs/development/production-roadmap.md)推进运维。
 - **待完成：**任务 0002 的固定版本故障样本与人工验收，以及真实模型的诊断效果、Incident 去重、生产压测、效果评测与 React/SSE 工作台。商城代码暂不修改，必要调整先提醒用户审查。

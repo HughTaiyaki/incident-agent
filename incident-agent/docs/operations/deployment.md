@@ -41,11 +41,12 @@ docker compose -f deploy/compose.yaml --env-file deploy/.env up --build --detach
 
 ## 3. 容量取值
 
-以下是 2026-11-02 在 macOS arm64、Redis 8.0.2 上的单机测量，**不是生产压测**。真实模型样本只有 3 次。
+以下是 2026-11-02 在 macOS arm64、Redis 8.0.2 上的单机测量，**不是生产压测**。真实模型样本很少。
 
 | 项目 | 结果 | 怎么用 |
 | --- | --- | --- |
-| 单 Run 耗时（DeepSeek，3 次） | 6–17 秒 | deadline 180 秒且 Worker 串行，按 17 秒算最多排约 10 个 |
+| 单 Run 耗时（DeepSeek，Bundle 3 次，在线 2 次） | 6–17 秒，在线 10.7 秒；接管一次约 25 秒 | deadline 180 秒且 Worker 串行，按 17 秒算最多排约 10 个 |
+| 单 Run Token（DeepSeek） | Bundle 约 6,000；在线有错误日志的窗口约 18,000 | 费用预算按接近调查上限估算 |
 | `INCIDENT_MAX_ACTIVE_RUNS` | 建议从 2 开始，不超过 8 | 再多的 Run 大概率排队到 DEADLINE。慢模型要下调：单次调用可到 30 秒 |
 | 内存预留 | 256MiB 实测接受 31 个活跃 Run，2GiB 接受 255 个 | 符合 `maxmemory ÷ 8MiB`，超出返回 503 |
 | 终态 Run 内存 | 模拟模型 40 次约 12KiB/个；真实 Run 结果 8–13KiB，未直接测总占用 | 保留 7 天；单 Run 上限 7MiB |

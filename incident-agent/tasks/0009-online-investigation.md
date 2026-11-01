@@ -1,6 +1,6 @@
 # 任务 0009：在线持久调查与供应商联调
 
-日期：2026-11-02。状态：**工程切片、本机真实后端运行和 DeepSeek 兼容性已完成；在线后端加真实模型的完整运行待补跑。** 依赖[0008 容量与终态](0008-capacity-and-results.md)，对应[路线 P2](../docs/development/production-roadmap.md)。
+日期：2026-11-02。状态：**已完成：在线后端加 DeepSeek 的完整运行、恢复和遮蔽均已验证。诊断效果未评测，归 P5。** 依赖[0008 容量与终态](0008-capacity-and-results.md)，对应[路线 P2](../docs/development/production-roadmap.md)。
 
 ## 目标与范围
 
@@ -27,9 +27,10 @@
 | 查询和模型中断可恢复，不重发未知操作 | 本地模拟通过 |
 | 业务 ID 不进入 Prompt，导出不含真实 ID | 本地模拟通过 |
 | 真实三源后端的持久调查 | 通过：本机后端、回环脚本模型，见 [0010 报告](../docs/reports/0010-http-entry.md#验证记录) |
-| 业务 ID 遮蔽在真实记录上生效 | **未观察到**：逐字段核查过的运行没有业务 ID 字段，含 trace 查询的运行未核查 |
-| 在线后端加真实模型的完整运行 | **部分**：API、Worker、Redis、DeepSeek 跑通，但当时后端已停，只验证了后端全断的路径 |
+| 业务 ID 遮蔽在真实记录上生效 | 通过：证据含 15 个真实业务 ID，发出的内容里 0 个，出现的 3 个 ID 字段都已假名化 |
+| 在线后端加真实模型的完整运行 | 通过：API、Worker、Redis、三源后端、DeepSeek，见[改动报告](../docs/reports/0009-online-investigation.md#在线完整运行) |
+| 真实模型下进程被杀后恢复 | 通过：`kill -9` 后新 Worker 接管，状态不明的操作不重发 |
 | 选定供应商的真实兼容性结果 | 通过：DeepSeek `deepseek-flash`，见[改动报告](../docs/reports/0009-online-investigation.md#deepseek-联调) |
-| 留存真实运行的脱敏证据和结果 | 部分：匿名导出和联调结果已留在本地 `data/`；在线完整运行待补跑 |
+| 留存真实运行的脱敏证据和结果 | 通过：本机后端的匿名导出和运行结果留在本地 `data/`；最近几次运行的证据未匿名，同样只在本地 |
 
-结果与文件清单见[改动报告](../docs/reports/0009-online-investigation.md)。在线完整运行通过后本任务才算完成，它只需启动现有后端，不需要新开发。[任务 0010](0010-http-entry.md) 不依赖它，已并行推进。
+结果与文件清单见[改动报告](../docs/reports/0009-online-investigation.md)。[任务 0010](0010-http-entry.md) 不依赖它，已并行推进。
