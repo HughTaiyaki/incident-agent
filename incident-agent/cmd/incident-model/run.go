@@ -62,7 +62,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	client, err := modelhttp.New(modelhttp.Config{Endpoint: os.Getenv("INCIDENT_MODEL_ENDPOINT"),
-		APIKey: os.Getenv("INCIDENT_MODEL_API_KEY"), Model: model})
+		APIKey: os.Getenv("INCIDENT_MODEL_API_KEY"), Model: model, Profile: os.Getenv("INCIDENT_MODEL_API_PROFILE")})
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2

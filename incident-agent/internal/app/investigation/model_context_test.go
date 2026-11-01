@@ -86,3 +86,22 @@ func TestModelInputMasksBusinessIdentifiers(t *testing.T) {
 		t.Fatal("pseudonym shared across runs")
 	}
 }
+
+func TestFeedbackHintsAreFixedText(t *testing.T) {
+	for code := range feedbackHints {
+		data, _, _, err := buildModelInput(View{Request: request(), Phase: "INVESTIGATING", Feedback: code}, 4000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var input modelInput
+		if err := json.Unmarshal(data, &input); err != nil {
+			t.Fatal(err)
+		}
+		if input.Feedback != feedbackHints[code] || !strings.HasPrefix(input.Feedback, code) {
+			t.Fatalf("%s: %q", code, input.Feedback)
+		}
+	}
+	if got := feedbackText("QUERY_SUCCEEDED"); got != "QUERY_SUCCEEDED" {
+		t.Fatal(got)
+	}
+}

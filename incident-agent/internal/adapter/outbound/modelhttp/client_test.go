@@ -27,6 +27,38 @@ func TestNew(t *testing.T) {
 		t.Fatal("header injection")
 	}
 }
+func TestProfiles(t *testing.T) {
+	if _, err := New(Config{Endpoint: "https://example.com/chat", APIKey: "k", Model: "m", Profile: "other"}); err == nil {
+		t.Fatal("unknown profile accepted")
+	}
+	var raw map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			t.Error(err)
+		}
+		_, _ = fmt.Fprint(w, `{"choices":[{"finish_reason":"stop","message":{"content":"{}"}}],"usage":{"prompt_tokens":1,"completion_tokens":1}}`)
+	}))
+	defer server.Close()
+	client, err := New(Config{Endpoint: server.URL + "/chat", Model: "m", Profile: ProfileDeepSeek})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	if _, err := client.Complete(context.Background(), testInput()); err != nil {
+		t.Fatal(err)
+	}
+	if raw["max_tokens"] != float64(512) {
+		t.Fatalf("output limit not sent as max_tokens: %v", raw)
+	}
+	if mode, _ := raw["thinking"].(map[string]any); mode["type"] != "disabled" {
+		t.Fatalf("thinking not disabled: %v", raw)
+	}
+	for _, field := range []string{"max_completion_tokens", "store"} {
+		if _, found := raw[field]; found {
+			t.Fatalf("unsupported field %s sent", field)
+		}
+	}
+}
 func TestComplete(t *testing.T) {
 	t.Run("bounded request and usage", func(t *testing.T) {
 		calls := 0
@@ -39,7 +71,7 @@ func TestComplete(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Error(err)
 			}
-			if body.MaxCompletionTokens != 512 || body.Stream || body.Store || body.ResponseFormat.Type != "json_object" || len(body.Messages) != 2 {
+			if body.MaxCompletionTokens != 512 || body.Stream || body.Store == nil || *body.Store || body.MaxTokens != 0 || body.Thinking != nil || body.ResponseFormat.Type != "json_object" || len(body.Messages) != 2 {
 				t.Error("request shape")
 			}
 			_, _ = fmt.Fprint(w, `{"choices":[{"finish_reason":"stop","message":{"content":"{\"kind\":\"report\"}"}}],"usage":{"prompt_tokens":100,"completion_tokens":10}}`)

@@ -13,7 +13,7 @@ import (
 const ModelTokenLimit = 24000
 
 // ReportTokenReserve protects the final synthesis allowance.
-const ReportTokenReserve = 3000
+const ReportTokenReserve = 6000
 
 // MaxOutputTokens caps a single completion request.
 const MaxOutputTokens = 1500
@@ -115,11 +115,11 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	if !m.started || m.exhausted || len(m.calls) >= 12 {
 		return nil, ErrModelBudget
 	}
+	// The reserve is a floor investigation cannot touch, not a cap on the report: a
+	// report that cannot see records has nothing to cite and can only be INCONCLUSIVE.
 	available := ModelTokenLimit - m.charged
 	if view.Phase != "SYNTHESIZING" {
 		available -= ReportTokenReserve
-	} else {
-		available = min(available, ReportTokenReserve)
 	}
 	if available < 1 {
 		if view.Phase != "SYNTHESIZING" {
@@ -128,9 +128,6 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		return nil, ErrModelBudget
 	}
 	output := min(MaxOutputTokens, available/3)
-	if view.Phase == "SYNTHESIZING" {
-		output = min(output, 512)
-	}
 	if output < 256 {
 		if view.Phase != "SYNTHESIZING" {
 			return nil, ErrSynthesisRequired

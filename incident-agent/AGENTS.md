@@ -2,9 +2,9 @@
 
 ## 项目与当前阶段
 
-IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当前已有带 Token 校验的 HTTP 调查 API、三源只读查询 CLI、匿名证据 Bundle、离线回放及脚本驱动的单次调查 Harness、结构化日志聚合；已增加有界模型上下文、Token 预算和显式配置 HTTP Provider；已增加 Redis 原子状态、Harness checkpoint、可恢复 Worker、全局 Run 准入和终态查询投影；在线持久调查已有工程切片；真实供应商与后端联调、工作台待验收/实现。当前能力以 [README](README.md) 和代码为准。
+IncidentLens 是面向已完成 GoFrame 商城的只读日志诊断 Agent。当前已有带 Token 校验的 HTTP 调查 API、三源只读查询 CLI、匿名证据 Bundle、离线回放及脚本驱动的单次调查 Harness、结构化日志聚合；已增加有界模型上下文、Token 预算和显式配置 HTTP Provider；已增加 Redis 原子状态、Harness checkpoint、可恢复 Worker、全局 Run 准入和终态查询投影；在线持久调查已有工程切片；工作台待实现。当前能力以 [README](README.md) 和代码为准。
 
-当前已完成[任务 0007：生产工程基线](tasks/0007-production-baseline.md)和[任务 0008：Run 容量与终态查询](tasks/0008-capacity-and-results.md)的工程验收，本机与远端 CI 均通过；进行中的切片为[任务 0009：在线持久调查与供应商联调](tasks/0009-online-investigation.md)（供应商联调待配置）和[任务 0010：HTTP 调查入口](tasks/0010-http-entry.md)（工程部分已本地验证），后续顺序见[生产路线](docs/development/production-roadmap.md)；[任务 0006：独立 Redis 状态与恢复](tasks/0006-redis-recovery.md)已完成工程切片；[任务 0005：模型调用边界](tasks/0005-model-boundary.md)已完成工程切片，建立在已完成的[离线调查](tasks/0003-offline-investigation.md)和[日志聚合](tasks/0004-log-patterns.md)之上；[任务 0002：商城遥测接入](tasks/0002-goframeshop-integration.md)保留固定版本故障案例待验收。文档维护或查询按用户请求完成，不自动启动该任务。复用商城及 Prometheus／Loki／Jaeger；不重建商城、不开发自研 KV、不增加第二个 Trace 后端。上游事实见[固定提交基线](docs/integration/goframeshop-baseline.md)。
+当前已完成[任务 0007：生产工程基线](tasks/0007-production-baseline.md)和[任务 0008：Run 容量与终态查询](tasks/0008-capacity-and-results.md)的工程验收，本机与远端 CI 均通过；进行中的切片为[任务 0009：在线持久调查与供应商联调](tasks/0009-online-investigation.md)（DeepSeek 兼容性已通过，在线完整运行待补跑）和[任务 0010：HTTP 调查入口](tasks/0010-http-entry.md)（工程部分已本地验证），后续顺序见[生产路线](docs/development/production-roadmap.md)；[任务 0006：独立 Redis 状态与恢复](tasks/0006-redis-recovery.md)已完成工程切片；[任务 0005：模型调用边界](tasks/0005-model-boundary.md)已完成工程切片，建立在已完成的[离线调查](tasks/0003-offline-investigation.md)和[日志聚合](tasks/0004-log-patterns.md)之上；[任务 0002：商城遥测接入](tasks/0002-goframeshop-integration.md)保留固定版本故障案例待验收。文档维护或查询按用户请求完成，不自动启动该任务。复用商城及 Prometheus／Loki／Jaeger；不重建商城、不开发自研 KV、不增加第二个 Trace 后端。上游事实见[固定提交基线](docs/integration/goframeshop-baseline.md)。
 
 用户确认的本机商城目录为工作区同级的 `../GoframeShop/goframeshop/`（相对工作区根目录）；版本与实验前置检查见[本机入口](docs/integration/goframeshop-baseline.md#本机入口与运行状态)。该路径仅供开发核对，不作为 Agent 的 Shell／源码读取工具入口。用户要求暂不修改商城相关代码；确需上游调整时，先说明原因与改动范围并提醒用户审查。
 

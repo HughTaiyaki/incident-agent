@@ -46,8 +46,10 @@ type Submitted struct {
 	Created bool   `json:"created"`
 }
 
-// ProviderIdentity identifies a model endpoint without persisting its address.
-func ProviderIdentity(endpoint string) string { return telemetry.Hash([]byte(endpoint)) }
+// ProviderIdentity identifies a model endpoint and request shape without persisting its address.
+func ProviderIdentity(endpoint, profile string) string {
+	return telemetry.Hash([]byte(endpoint + "\x00" + profile))
+}
 
 // TelemetryIdentity identifies the live backends without persisting their addresses.
 func TelemetryIdentity(prometheus, loki, jaeger string) string {

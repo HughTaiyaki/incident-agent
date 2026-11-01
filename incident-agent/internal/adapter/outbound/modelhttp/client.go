@@ -22,11 +22,29 @@ const MaxResponseBytes = 256 << 10
 
 var modelName = regexp.MustCompile(`^[a-zA-Z0-9_./:-]{1,128}$`)
 
+// Request shapes differ between providers that all accept the Chat Completions path.
+const (
+	ProfileOpenAI   = "openai"
+	ProfileDeepSeek = "deepseek"
+)
+
+// ParseProfile normalizes the operator's choice; empty selects the original request shape.
+func ParseProfile(value string) (string, error) {
+	switch value {
+	case "", ProfileOpenAI:
+		return ProfileOpenAI, nil
+	case ProfileDeepSeek:
+		return ProfileDeepSeek, nil
+	}
+	return "", errors.New("unknown model API profile")
+}
+
 // Config is operator-controlled; no model decision or source text can change it.
 type Config struct {
 	Endpoint string
 	APIKey   string
 	Model    string
+	Profile  string
 }
 
 // Client sends bounded completions to one operator-configured endpoint.
@@ -34,12 +52,17 @@ type Client struct {
 	endpoint  string
 	apiKey    string
 	model     string
+	profile   string
 	http      *http.Client
 	transport *http.Transport
 }
 
 // New disables proxy inheritance, redirects and automatic application retries.
 func New(config Config) (*Client, error) {
+	profile, err := ParseProfile(config.Profile)
+	if err != nil {
+		return nil, err
+	}
 	u, err := url.Parse(config.Endpoint)
 	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path == "" ||
 		!modelName.MatchString(config.Model) || strings.ContainsAny(config.APIKey, "\r\n") || len(config.APIKey) > 4096 {
@@ -60,7 +83,7 @@ func New(config Config) (*Client, error) {
 		MaxIdleConns: 1, IdleConnTimeout: 30 * time.Second, ForceAttemptHTTP2: true}
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	return &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, http: client, transport: transport}, nil
+	return &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport}, nil
 }
 
 // Close releases idle provider connections.
@@ -73,12 +96,34 @@ type message struct {
 type completionBody struct {
 	Model               string    `json:"model"`
 	Messages            []message `json:"messages"`
-	MaxCompletionTokens int       `json:"max_completion_tokens"`
+	MaxCompletionTokens int       `json:"max_completion_tokens,omitempty"`
+	MaxTokens           int       `json:"max_tokens,omitempty"`
 	ResponseFormat      struct {
 		Type string `json:"type"`
 	} `json:"response_format"`
-	Stream bool `json:"stream"`
-	Store  bool `json:"store"`
+	Stream   bool      `json:"stream"`
+	Store    *bool     `json:"store,omitempty"`
+	Thinking *thinking `json:"thinking,omitempty"`
+}
+
+type thinking struct {
+	Type string `json:"type"`
+}
+
+// requestBody builds the provider's shape. DeepSeek ignores max_completion_tokens and
+// counts reasoning against max_tokens, so its limit only holds with thinking disabled.
+func (c *Client) requestBody(input investigation.CompletionRequest) completionBody {
+	body := completionBody{Model: c.model, Messages: []message{{Role: "system", Content: input.Instructions}, {Role: "user", Content: string(input.Input)}}}
+	body.ResponseFormat.Type = "json_object"
+	if c.profile == ProfileDeepSeek {
+		body.MaxTokens = input.MaxOutputTokens
+		body.Thinking = &thinking{Type: "disabled"}
+		return body
+	}
+	store := false
+	body.MaxCompletionTokens = input.MaxOutputTokens
+	body.Store = &store
+	return body
 }
 
 type completionResult struct {
@@ -105,9 +150,7 @@ func (c *Client) Complete(ctx context.Context, input investigation.CompletionReq
 		len(input.Instructions)+len(input.Input) > 24000 || !json.Valid(input.Input) {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}
-	body := completionBody{Model: c.model, Messages: []message{{Role: "system", Content: input.Instructions}, {Role: "user", Content: string(input.Input)}}, MaxCompletionTokens: input.MaxOutputTokens}
-	body.ResponseFormat.Type = "json_object"
-	encoded, err := json.Marshal(body)
+	encoded, err := json.Marshal(c.requestBody(input))
 	if err != nil {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}

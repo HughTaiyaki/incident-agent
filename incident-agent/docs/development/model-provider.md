@@ -1,6 +1,6 @@
 # 模型 Provider、上下文与预算
 
-更新：2026-10-31。对应[任务 0005](../../tasks/0005-model-boundary.md)。本切片实现可配置模型调用、输入选择与内存预算；已用本地 HTTP 模拟服务验证，不代表真实供应商或生产部署验收通过。当前遥测来源仍为冻结 Fixture。
+更新：2026-11-02。对应[任务 0005](../../tasks/0005-model-boundary.md)。本切片实现可配置模型调用、输入选择与内存预算；已用本地 HTTP 模拟服务验证，并与 DeepSeek 官方接口联调（结果见[任务 0009](../../tasks/0009-online-investigation.md)），不代表诊断效果或生产部署验收通过。当前遥测来源仍为冻结 Fixture。
 
 ## 1. 两种命令与启用方式
 
@@ -14,6 +14,7 @@
 | INCIDENT_MODEL_NAME | 部署者选定的实际模型名称；建议固定版本 |
 | INCIDENT_MODEL_CONTEXT_WINDOW | 实际模型上下文窗口，整数 4096–2000000；必须显式配置，本项目不推断 |
 | INCIDENT_MODEL_API_KEY | 认证密钥；非回环地址必填，回环本地模型可省略 |
+| INCIDENT_MODEL_API_PROFILE | 请求形状：`openai`（默认）或 `deepseek`，见第 2 节；API 与 Worker 必须一致 |
 
 配置后执行：
 
@@ -32,6 +33,8 @@
 
 当前采用 [Chat Completions API](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) 的非流式 JSON 子集：发送两条 system/user 消息、`max_completion_tokens`、`response_format.type=json_object`、`stream=false`、`store=false`；读取单条 choices、finish_reason 与 usage。JSON 模式仍需由本地 Guard 校验业务 schema，参考[结构化输出说明](https://developers.openai.com/api/docs/guides/structured-outputs)。
 
+**DeepSeek 配置（2026-11-02 实测）：** 端点 `https://api.deepseek.com/chat/completions`，`INCIDENT_MODEL_API_PROFILE=deepseek`，模型名和窗口以其 `/models` 接口为准（实测时 `deepseek-flash`、1048576）。必须用这个配置：DeepSeek 忽略 `max_completion_tokens`，实测设 30 仍返回 425 个输出 Token，只有 `max_tokens` 生效；`max_tokens` 又把思考内容计入，所以该配置同时关闭思考，并省略文档未列出的 `store`。
+
 只接受 `finish_reason=stop`，拒绝工具调用、拒答、截断和异常响应形状。不能据此宣称任意“兼容 OpenAI”的网关或模型都已兼容；支持不同参数、Responses API 或其他供应商需要独立 Adapter 与联调。即使请求包含 store=false，也不能将其解读为供应商的完整数据保留承诺。
 
 - 固定配置 URL，模型和来源文本不能改变它；不接收 URL 凭据、查询串或 fragment。
@@ -42,7 +45,7 @@
 
 ## 3. 上下文怎样选择
 
-固定系统规则与不可信数据分成两条消息。数据包含冻结 Request、阶段、有限反馈、最近最多三个查询的来源质量，以及最多 24 条完整规范化记录。长摘要保留前 128 字符并标记截断；旧查询与未选记录明确计入 omitted_queries/omitted_records。
+固定系统规则与不可信数据分成两条消息。被拒绝后，反馈是按结果代码选择的固定改正说明，不回显模型输出。数据包含冻结 Request、阶段、有限反馈、最近最多三个查询的来源质量，以及最多 24 条完整规范化记录。长摘要保留前 128 字符并标记截断；旧查询与未选记录明确计入 omitted_queries/omitted_records。
 
 先保留范围和省略标记，再按可用字节预算装入来源质量。若预算仍不足，省略较旧查询摘要并增加计数；必要基础内容都装不下时，不发起调用，输出 MODEL_CONTEXT_LIMIT。模型不能把未显示的信息当成不存在。
 
@@ -57,8 +60,9 @@
 | 项目 | 行为 |
 | --- | --- |
 | Run 总额度 | 24,000，输入＋输出一起核算 |
-| 调查阶段 | 可用额度扣除 3,000 报告预留；不能消耗报告预留 |
-| 单次输出 | 最多 1,500，调查临近额度时缩小；汇总阶段当前最多 512，以给输入留空间 |
+| 调查阶段 | 可用额度扣除 6,000 报告预留；不能消耗报告预留 |
+| 汇总阶段 | 可用全部剩余额度，至少有报告预留；预留是下限，不是上限 |
+| 单次输出 | 最多 1,500，临近额度时缩小 |
 | 输入上限 | 本次可用额度与模型窗口 60% 中较小值，再扣输出上限 |
 | 输入估算 | UTF-8 字节数＋固定规则长度＋256 开销，版本 utf8-bytes-plus-256-v1 |
 | 发起调用 | 先在内存中记录调用并扣预留，再请求 Provider |

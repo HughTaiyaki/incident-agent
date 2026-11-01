@@ -170,29 +170,68 @@ func TestExecute(t *testing.T) {
 	})
 	t.Run("one repair for invented citation", func(t *testing.T) {
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
-			if v.Step == 1 {
+			switch v.Step {
+			case 1:
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			case 2:
 				return raw(Decision{Kind: "report", Report: ptr(validDraft("foreign-run-id"))}), nil
 			}
 			if v.Phase != "SYNTHESIZING" || v.Feedback != "REPORT_REJECTED" {
 				t.Fatal(v)
 			}
 			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
-		}), queryFunc(func(context.Context, telemetry.Query, *telemetry.Budget) (telemetry.Result, error) {
-			t.Fatal("IO")
-			return telemetry.Result{}, nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, "1"), nil
 		}))
-		if result.Decisions != 2 || result.Report.StopReason != "REPORT_REPAIRED" {
+		if result.Decisions != 3 || result.Report.StopReason != "REPORT_REPAIRED" {
 			t.Fatal(result)
 		}
 	})
 	t.Run("second invalid report falls back", func(t *testing.T) {
-		result, _ := Execute(t.Context(), request(), decideFunc(func(context.Context, View) (json.RawMessage, error) {
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step == 1 {
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			}
 			return raw(Decision{Kind: "report", Report: ptr(validDraft("invented"))}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, "1"), nil
+		}))
+		if result.Decisions != 3 || result.Report.StopReason != "REPORT_INVALID" || len(result.Report.Facts) != 0 {
+			t.Fatal(result)
+		}
+	})
+	t.Run("report before any query is asked again", func(t *testing.T) {
+		queries := 0
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step == 1 {
+				return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+			}
+			if v.Step == 2 {
+				if v.Phase != "INVESTIGATING" || v.Feedback != "DECISION_REJECTED" {
+					t.Fatal(v)
+				}
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			}
+			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			queries++
+			return observation(q, "1"), nil
+		}))
+		if queries != 1 || result.Decisions != 3 || result.Report.StopReason != "REPORT_ACCEPTED" {
+			t.Fatal(result)
+		}
+	})
+	t.Run("only reports without a query end through synthesis", func(t *testing.T) {
+		result, _ := Execute(t.Context(), request(), decideFunc(func(context.Context, View) (json.RawMessage, error) {
+			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
 		}), queryFunc(func(context.Context, telemetry.Query, *telemetry.Budget) (telemetry.Result, error) {
 			t.Fatal("IO")
 			return telemetry.Result{}, nil
 		}))
-		if result.Decisions != 2 || result.Report.StopReason != "REPORT_INVALID" || len(result.Report.Facts) != 0 {
+		if result.Report.StopReason != "NO_PROGRESS" || result.Report.Result != "INCONCLUSIVE" {
 			t.Fatal(result)
 		}
 	})

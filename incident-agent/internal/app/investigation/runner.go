@@ -133,6 +133,11 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			return finish(fallback(), stopReason)
 		}
 		decision, err := decodeDecision(raw)
+		// A report written before any query has seen nothing, so ask again rather than
+		// moving to synthesis, where it could only restate that nothing was checked.
+		if err == nil && decision.Kind == "report" && len(run.Evidence) == 0 && phase != "SYNTHESIZING" {
+			err = ErrInvalidDecision
+		}
 		if err != nil {
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
 			noProgress++

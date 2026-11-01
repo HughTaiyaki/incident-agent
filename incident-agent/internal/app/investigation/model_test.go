@@ -159,3 +159,36 @@ func TestModelDecider(t *testing.T) {
 		})
 	})
 }
+
+// A report must be able to see records even when investigation stopped early; the
+// reserve is a floor for synthesis, not a limit on what it may spend.
+func TestSynthesisUsesRemainingBudget(t *testing.T) {
+	var got CompletionRequest
+	model, err := NewModelDecider(providerFunc(func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+		got = r
+		return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())})}, nil
+	}), "test-model", 1048576)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := model.BeginRun(); err != nil {
+		t.Fatal(err)
+	}
+	q := query()
+	records := []telemetry.Record{}
+	for i := range 8 {
+		records = append(records, observation(q, strconv.Itoa(i)).Records...)
+	}
+	result := telemetry.Result{Query: q, QueryID: "q", Records: records}
+	result.Quality.QueryOutcome = "SUCCEEDED"
+	if _, err := model.Decide(t.Context(), View{RunID: "r", Request: request(), Phase: "SYNTHESIZING", Step: 1, Evidence: []telemetry.Result{result}}); err != nil {
+		t.Fatal(err)
+	}
+	var input modelInput
+	if err := json.Unmarshal(got.Input, &input); err != nil {
+		t.Fatal(err)
+	}
+	if got.MaxOutputTokens != MaxOutputTokens || len(input.Records) != 8 || input.OmittedRecords != 0 {
+		t.Fatalf("output=%d records=%d omitted=%d", got.MaxOutputTokens, len(input.Records), input.OmittedRecords)
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/inbound/httpapi"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/redisstate"
 	"github.com/hughtaiyaki/incident-agent/internal/app"
 	"github.com/hughtaiyaki/incident-agent/internal/app/worker"
@@ -83,6 +84,10 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 	if err != nil || model == "" || endpoint == "" {
 		return nil, nil, errors.New("explicit INCIDENT_MODEL_NAME, INCIDENT_MODEL_ENDPOINT and INCIDENT_MODEL_CONTEXT_WINDOW required")
 	}
+	profile, err := modelhttp.ParseProfile(getenv("INCIDENT_MODEL_API_PROFILE"))
+	if err != nil {
+		return nil, nil, err
+	}
 	prometheus, loki, jaeger := getenv("INCIDENT_PROMETHEUS_URL"), getenv("INCIDENT_LOKI_URL"), getenv("INCIDENT_JAEGER_URL")
 	if prometheus == "" || loki == "" || jaeger == "" {
 		return nil, nil, errors.New("explicit INCIDENT_PROMETHEUS_URL, INCIDENT_LOKI_URL and INCIDENT_JAEGER_URL required")
@@ -95,7 +100,7 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 		Token: token, Store: store, MaxActive: maxActive, Readiness: store.Readiness,
 		Now: time.Now,
 		Template: worker.Template{
-			Model: model, Window: window, ProviderID: worker.ProviderIdentity(endpoint),
+			Model: model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
 			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: telemetry.DefaultPolicy().Services,
 		},
 	}

@@ -54,9 +54,32 @@ Job 版本仍是 worker-v1，新增字段可选，已有 Run 可继续读取。
 
 本机 `make release-check` 退出 0：格式、模块校验、vet、race、lint、Redis 回归 136.6s、五个命令构建，普通与 Redis 标签漏洞扫描均为 `No vulnerabilities found.`。代码随提交 `7552a10` 入库，[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/workflows/agent-release-check.yml) 在 ubuntu-24.04 通过。CI 同样只用模拟服务。
 
+## DeepSeek 联调
+
+2026-11-02，官方接口，模型 `deepseek-flash`，窗口按 `/models` 配置为 1048576。发送的是本机商城遥测的规范化记录和请求摘要，业务 ID 已假名化。密钥只从环境变量读取，运行产物和日志里检索不到。
+
+| 运行 | 结果 |
+| --- | --- |
+| 修复前，匿名 Fixture | 第 4 次调用输出 2703，超过 1500 的上限，以 MODEL_BUDGET 停止 |
+| 只修请求形状，匿名 Fixture，5 次 | 全部正常收尾，用量在上限内；但有 DECISION_REJECTED、无记录的汇总，以及未查询就报告 |
+| 全部修复后，匿名 Fixture，3 次 | 全部正常收尾，都先查询；2 次报告带有引用的事实，1 次无事实的 INCONCLUSIVE；仍偶有 DECISION_REJECTED |
+| 持久 Worker＋独立 Redis，真实后端采集的 Bundle，3 次 | 全部 COMPLETED，每次 3–4 次模型调用，实际计费 5,771–6,533 Token；结果都是 INCONCLUSIVE，后两次带 1–2 条有引用的事实 |
+| API＋Worker＋独立 Redis，在线模式 | 跑通，但 Docker 已停、三个后端都不可达：查询记 SOURCE_UNAVAILABLE，报告 INCONCLUSIVE，未编造结论 |
+
+这些运行暴露并修复了四个问题，模拟模型都没有碰到：
+
+| 问题 | 修复 |
+| --- | --- |
+| DeepSeek 忽略 `max_completion_tokens`，默认思考还占输出 | 新增 `INCIDENT_MODEL_API_PROFILE=deepseek`：发 `max_tokens`，关闭思考。profile 计入 Provider 身份，恢复时配置变化会停止 |
+| `timeline.claim` 的说明含糊，模型写成字符串，被拒后也不知道原因 | 提示词写明对象形状；反馈改为固定的改正说明，不回显模型输出 |
+| 汇总阶段被限制在 3,000 内，按字节估算放不下任何记录，只能 INCONCLUSIVE | 预留改为下限：汇总可用全部剩余额度，预留升到 6,000，输出上限不再压到 512 |
+| 模型可能一次查询都没做就提交报告并被接受 | 未查询前的报告按决策拒绝并继续调查，反复如此才走无进展收尾 |
+
+报告预留翻倍会减少调查阶段的额度上限，但按实际用量结算后，这几次运行都远未用满。按字节估算约是实际 Token 的 3 倍，尚未校准。
+
 ## 未验证与限制
 
-- 没有调用真实供应商，兼容性、模型诊断质量和费用都未知。
+- 模型诊断质量未评测：联调窗口是普通历史读取窗口，只能说明能跑通，不说明根因判断准确，这归 P5。
 - 假名化不是匿名化：盐是 Run ID，能拿到 Run ID 的人可以穷举低熵 ID；Trace/Span ID、服务名和时间仍会发给模型。外发前需要操作员确认可接受。
 - 模型上下文只遮蔽字段值。操作员写在 Request.Summary 里的内容会原样外发。
 - 单次大查询可能耗尽额度，让后续查询都记为 RESULT_TOO_LARGE；额度未做真实数据校准。

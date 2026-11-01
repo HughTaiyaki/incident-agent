@@ -122,12 +122,16 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(errors.New("explicit model window required"))
 	}
-	provider, err := modelhttp.New(modelhttp.Config{Endpoint: endpoint, Model: model, APIKey: os.Getenv("INCIDENT_MODEL_API_KEY")})
+	profile, err := modelhttp.ParseProfile(os.Getenv("INCIDENT_MODEL_API_PROFILE"))
+	if err != nil {
+		return fail(err)
+	}
+	provider, err := modelhttp.New(modelhttp.Config{Endpoint: endpoint, Model: model, APIKey: os.Getenv("INCIDENT_MODEL_API_KEY"), Profile: profile})
 	if err != nil {
 		return fail(err)
 	}
 	defer provider.Close()
-	providerID := worker.ProviderIdentity(endpoint)
+	providerID := worker.ProviderIdentity(endpoint, profile)
 	if *mode == "enqueue" {
 		f, err := os.Open(*requestPath)
 		if err != nil {

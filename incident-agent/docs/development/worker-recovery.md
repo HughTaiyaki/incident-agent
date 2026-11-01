@@ -25,7 +25,7 @@ export INCIDENT_MAX_ACTIVE_RUNS=2   # 占位；取值见下文“准入与过载
   -fixture testdata/telemetry/observed-20261028/bundle.json
 ```
 
-以上地址/型号是占位，必须替换；密钥使用 `INCIDENT_MODEL_API_KEY`。enqueue 不调用模型；work 会显式调用已配置模型。任务冻结 Request、模型名、上下文窗口、遥测来源身份和 Endpoint hash；恢复时配置不匹配会停止，不替换模型或数据继续执行。
+以上地址/型号是占位，必须替换；密钥使用 `INCIDENT_MODEL_API_KEY`，DeepSeek 等供应商还需 `INCIDENT_MODEL_API_PROFILE`，见 [Provider 指南](model-provider.md#2-http-兼容范围)。enqueue 不调用模型；work 会显式调用已配置模型。任务冻结 Request、模型名、上下文窗口、遥测来源身份和 Endpoint hash；恢复时配置不匹配会停止，不替换模型或数据继续执行。
 
 ### 在线遥测模式
 
@@ -140,4 +140,4 @@ make build
 
 `test-redis` 自建临时 Unix socket Redis（TCP=0），含模型提交后的进程退出与真实租约到期接管，因此约需三分钟。覆盖幂等结果复用、UNKNOWN 不退款/不重发、取消/到期、实际请求预留、续租、进程退出、配置检查、并发准入、名额回收、接管占额、内存预留、迟到完成、损坏状态和编译后 CLI 的 enqueue/work/status/evidence/cancel；本地 HTTP 模型仅是程序协议验证。
 
-完整结果见[Worker 改动报告](../reports/0006-worker-recovery.md)和[容量与终态报告](../reports/0008-capacity-and-results.md)。在线模式的验证范围见[任务 0009](../../tasks/0009-online-investigation.md)。尚未验收真实供应商、部署环境的入口认证、Incident 去重、容量压测、SSE 或高可用。任务 0007 已升级至 Go 1.26.10，普通与 Redis 标签的已知可达漏洞扫描通过，见[工程基线报告](../reports/0007-production-baseline.md)。Redis/主机故障不保证零丢失；不能据此宣称整个项目生产就绪。
+完整结果见[Worker 改动报告](../reports/0006-worker-recovery.md)和[容量与终态报告](../reports/0008-capacity-and-results.md)。在线模式的验证范围见[任务 0009](../../tasks/0009-online-investigation.md)。真实供应商的兼容性见任务 0009，诊断效果未评测；尚未验收部署环境的入口认证、Incident 去重、容量压测、SSE 或高可用。任务 0007 已升级至 Go 1.26.10，普通与 Redis 标签的已知可达漏洞扫描通过，见[工程基线报告](../reports/0007-production-baseline.md)。Redis/主机故障不保证零丢失；不能据此宣称整个项目生产就绪。

@@ -1,5 +1,11 @@
 # 文档维护记录
 
+## 2026-11-02 · DeepSeek 联调
+
+- 完成 [任务 0009](../tasks/0009-online-investigation.md)的供应商兼容性：操作员选定 DeepSeek，密钥只从环境变量读取。在线后端加真实模型的完整运行待后端恢复后补跑。
+- 决定：Provider 增加显式 profile，而不是按地址判断或另写 Adapter，因为只有请求字段不同；profile 计入 Provider 身份。
+- 决定：报告预留从上限改为下限并升到 6,000，未查询前的报告不接受；行为变化详见[改动报告](reports/0009-online-investigation.md#deepseek-联调)。
+
 ## 2026-11-01 · HTTP 调查入口与 Token 结算
 
 - [任务 0010](../tasks/0010-http-entry.md)：Bearer Token、按 alert_id 幂等提交、Run 查询/报告/证据/取消，readyz 改为检查 Redis 和 Worker 心跳，默认只监听回环。
