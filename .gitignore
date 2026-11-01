@@ -1,0 +1,13 @@
+# Operating system
+.DS_Store
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local tool settings and logs
+.claude/settings.local.json
+*.log

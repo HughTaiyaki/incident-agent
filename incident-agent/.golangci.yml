@@ -1,0 +1,27 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - errcheck
+    - errorlint
+    - gosec
+    - govet
+    - ineffassign
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - unused
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    staticcheck:
+      checks: ["SA*"]
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

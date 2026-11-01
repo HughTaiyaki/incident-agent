@@ -1,0 +1,56 @@
+[
+  {
+    "kind": "metrics",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 20,
+    "metric": "rpc_error_rate",
+    "step_seconds": 15
+  },
+  {
+    "kind": "metrics",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 20,
+    "metric": "workflow_backlog",
+    "step_seconds": 15
+  },
+  {
+    "kind": "logs",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 100
+  },
+  {
+    "kind": "traces",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 20
+  },
+  {
+    "kind": "trace",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 200,
+    "trace_id": "dacba19eef748b9e4d088cb7d8527508"
+  },
+  {
+    "kind": "trace",
+    "service": "order-service",
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "limit": 200,
+    "trace_id": "690181816016ae290d1fcb18ed724326"
+  }
+]

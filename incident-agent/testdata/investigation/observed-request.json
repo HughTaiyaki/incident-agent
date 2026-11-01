@@ -1,0 +1,14 @@
+{
+  "service": "order-service",
+  "services": [
+    "gateway-h5",
+    "order-service",
+    "goods-service",
+    "user-service",
+    "payment-simulator"
+  ],
+  "environment": "local",
+  "start": "2026-10-28T06:00:00Z",
+  "end": "2026-10-28T06:05:00Z",
+  "summary": "核查历史遥测窗口是否足以支持交易故障结论。"
+}

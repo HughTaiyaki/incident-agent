@@ -1,0 +1,40 @@
+name: Agent release checks
+on:
+  pull_request:
+    paths: ['incident-agent/**', '.github/workflows/agent-release-check.yml']
+  push:
+    paths: ['incident-agent/**', '.github/workflows/agent-release-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agent-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: incident-agent
+    env:
+      GOTOOLCHAIN: local
+      GOSUMDB: sum.golang.org
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: incident-agent/go.mod
+          cache-dependency-path: incident-agent/go.sum
+      - name: Install isolated Redis test executables
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes redis-server redis-tools
+      - name: Check module tidiness
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - name: Required release checks
+        run: make release-check

@@ -1,0 +1,155 @@
+{
+  "request": {
+    "service": "order-service",
+    "services": [
+      "gateway-h5",
+      "order-service",
+      "goods-service",
+      "user-service",
+      "payment-simulator"
+    ],
+    "environment": "local",
+    "start": "2026-10-28T06:00:00Z",
+    "end": "2026-10-28T06:05:00Z",
+    "summary": "核查历史遥测窗口是否足以支持交易故障结论。"
+  },
+  "decisions": [
+    {
+      "kind": "query",
+      "query": {
+        "kind": "metrics",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20,
+        "metric": "rpc_error_rate",
+        "step_seconds": 15
+      }
+    },
+    {
+      "kind": "query",
+      "query": {
+        "kind": "metrics",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20,
+        "metric": "workflow_backlog",
+        "step_seconds": 15
+      }
+    },
+    {
+      "kind": "query",
+      "query": {
+        "kind": "logs",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 100
+      }
+    },
+    {
+      "kind": "query",
+      "query": {
+        "kind": "traces",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20
+      }
+    },
+    {
+      "kind": "query",
+      "query": {
+        "kind": "trace",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 200,
+        "trace_id": "dacba19eef748b9e4d088cb7d8527508"
+      }
+    },
+    {
+      "kind": "query",
+      "query": {
+        "kind": "trace",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 200,
+        "trace_id": "690181816016ae290d1fcb18ed724326"
+      }
+    },
+    {
+      "kind": "report",
+      "report": {
+        "result": "INCONCLUSIVE",
+        "facts": [
+          {
+            "text": "冻结窗口中可见四条 INFO 日志结构记录；正文已省略。",
+            "evidence_ids": [
+              "5d4e019b2abe45da8224fbee3e0c42e1fb041809e307dfa105f7e2bcd29d6ba1",
+              "9137dab125bb85d61f816da98ba0c05b01f569c2cdb47a3cae2545b0d50140e3",
+              "7ab956adc68d416c685daecc17c8038118455d8f78472f33a66a0bbbd96135d6",
+              "eaa5d2efa0a7edb7354757c1e9402d26e63dbbc2c0e5fb756254391c666f1766"
+            ]
+          }
+        ],
+        "timeline": [
+          {
+            "at": "2026-10-28T06:03:32.351414Z",
+            "claim": {
+              "text": "观察到一条 INFO 日志结构记录。",
+              "evidence_ids": [
+                "5d4e019b2abe45da8224fbee3e0c42e1fb041809e307dfa105f7e2bcd29d6ba1"
+              ]
+            }
+          },
+          {
+            "at": "2026-10-28T06:03:32.37931Z",
+            "claim": {
+              "text": "观察到一条 INFO 日志结构记录。",
+              "evidence_ids": [
+                "9137dab125bb85d61f816da98ba0c05b01f569c2cdb47a3cae2545b0d50140e3"
+              ]
+            }
+          },
+          {
+            "at": "2026-10-28T06:03:33.78856Z",
+            "claim": {
+              "text": "观察到一条 INFO 日志结构记录。",
+              "evidence_ids": [
+                "7ab956adc68d416c685daecc17c8038118455d8f78472f33a66a0bbbd96135d6"
+              ]
+            }
+          },
+          {
+            "at": "2026-10-28T06:03:33.803666Z",
+            "claim": {
+              "text": "观察到一条 INFO 日志结构记录。",
+              "evidence_ids": [
+                "eaa5d2efa0a7edb7354757c1e9402d26e63dbbc2c0e5fb756254391c666f1766"
+              ]
+            }
+          }
+        ],
+        "alternatives": [],
+        "unknowns": [
+          "历史样本的运行源码版本未证实。",
+          "样本不包含足以确认交易故障及其根因的证据；查询覆盖与新鲜度未知。",
+          "没有异常前后同口径对照，恢复状态未知。"
+        ],
+        "next_actions": [
+          "核对固定版本及交易异常窗口后，准备独立的故障与正常对照样本。"
+        ],
+        "recovery_assessment": "UNKNOWN"
+      }
+    }
+  ]
+}

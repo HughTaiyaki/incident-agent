@@ -1,0 +1,2496 @@
+{
+  "schema_version": "1",
+  "policy_version": "telemetry-v2.1/adapter-v1",
+  "origin": "live",
+  "upstream_sha": "unknown",
+  "captured_at": "2026-10-28T07:36:49.46952Z",
+  "entries": [
+    {
+      "query": {
+        "kind": "metrics",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20,
+        "metric": "rpc_error_rate",
+        "step_seconds": 15
+      },
+      "source": "prometheus",
+      "query_id": "b159c6f9b2dde137dbeeb0ce3f9f5c3c888f612f4a5b0e174e1cf56e34d2f99f",
+      "canonical_query": "/api/v1/query_range?end=2026-10-28T06%3A05%3A00Z\u0026limit=20\u0026query=sum+by+%28service%2Cenvironment%29+%28rate%28trade_rpc_duration_seconds_count%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%2Coutcome%3D%22error%22%7D%5B2m%5D%29%29+%2F+sum+by+%28service%2Cenvironment%29+%28rate%28trade_rpc_duration_seconds_count%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%7D%5B2m%5D%29%29\u0026start=2026-10-28T06%3A00%3A00Z\u0026step=15\u0026timeout=5s",
+      "collected_at": "2026-10-28T07:36:48.003902Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "PARTIAL",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 21,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "PARTIAL",
+        "missing_reasons": [
+          "undefined_metric_value"
+        ],
+        "latest_event_at": "2026-10-28T06:05:00Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "81049ea8603ec95d81a3f9edf4c9dcd9ec819f74454e59263c4368b2e828d971",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "529dcd0969ffc86dc2afaf7ce55ad07985e21cc702b6fcdb33dd850a5d54d473",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "2bf53df34a0912bef2cac51e16e016512a3a66616af606cbf67bc2c8f3966829",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "cb2d02485126f8f380414d656834210c35c987bbee69cc0e84fbd477dca95b63",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "a72510af845e617434d3e3f12add4059cc3eb63dafd49f1095e99857ac70076a",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "ec14afc4f197c7ea5b6d3284f6d2932691a97a109fe0d6274893a6778b259cca",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "a2a5e88023956c44cb2b98dbbc279f09b25efef5169408be1cdba2c8f2cefdb8",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "5d586eb61dbf74a71f597835805ad773c1ebf7a08976e1ff92aecaca8905299a",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "2404ee15d4a98df5555b705765eaecc2424a3a34076488080a13129c62f521dd",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "67b4481ce0d2bc90638c42451d5b5436d1716792d1678bae39419e0ebd87396f",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "e6f9a78d3c52921f59a6684d2218ee71a18ae695bc3facc75d3438ae1992edb8",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "4997b771b9747c60bad988d4a433bdf6b65bac4c2fd3962243a18d1d97a550cc",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "b739b3ea2c0d097319ac6e7a06d41154001fce08b812214d9ebb9c6b23948615",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "3ca601e39af87c5cce8aca008bd6178cd5aba4f22d148e8d300bfd02a88b79ab",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "e4d19d06da6bde84f4667ac3f0a901ebe64813235e1680bcf5879ea47733f9e1",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "c074b2870ea6d1137ecc857bdf2e44606fa02c60acd7511df680a4455a1f1cd2",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "20f30565547bb520972a5f0cf59cde5b226c5c51909e7cd0331328bee1e7510a",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "75c009ad0098172d53c37272bc198433e3ad3c2b1708662eea7683b22b5a1101",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "216ca4672ddf1e6c225f74b9ced396a9bd8aab33d4948224728bb074602c1494",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "8b7cb82aadf1be52ddb35c38b16d890f63d8adf37d28a4cb4dbf2c3674372344",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.003902Z",
+          "id": "d627cd6faf634bcfc7648779cafab022d962e3a932b28d51324d35858ac67514",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "rpc_error_rate",
+            "value_status": "UNDEFINED"
+          }
+        }
+      ],
+      "requests": 1,
+      "digest": "8b1b56f058a26d84f3f5248ac2677088b6481e5e35ac31f5076350e69ba9b247"
+    },
+    {
+      "query": {
+        "kind": "metrics",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20,
+        "metric": "workflow_backlog",
+        "step_seconds": 15
+      },
+      "source": "prometheus",
+      "query_id": "01dec1dc957dcf46cacacdfd231dde6308098ed8201cc8e901cb556cf829739b",
+      "canonical_query": "/api/v1/query_range?end=2026-10-28T06%3A05%3A00Z\u0026limit=20\u0026query=trade_workflow_backlog%7Bservice%3D%22order-service%22%2Cenvironment%3D%22local%22%7D\u0026start=2026-10-28T06%3A00%3A00Z\u0026step=15\u0026timeout=5s",
+      "collected_at": "2026-10-28T07:36:48.012504Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "AVAILABLE",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 126,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "UNKNOWN",
+        "missing_reasons": [],
+        "latest_event_at": "2026-10-28T06:05:00Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "d46490d6a0d4e124e68d1e7bfc996abd4c69055891797b88233824a26ded35ee",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b3602bff18137b68089ee153bf57eb8739d1335d007908e6e39c8f10c28e16a7",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b303921806bb350f7b1a6d324a9dfd179c6ce8f01ff6ed9036753703b3758eea",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "635c3fb250b8d85b4444842ba7fb05454fd89f45984024b8638572d3dc4efef6",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "7616571f284bc1b11eaa09768dc4d556cfb948812dd61ae6e8821a89ef75e008",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "fd65a6bf9ace07f5729acba83bad7779a845637321375190084ba61f5d5c4b35",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b395760e959adb2fbf797afe4cbf0274c089b9d9918284b08ded94879ce6a16e",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "969720c9496d190c4b008b011a3e14d71a48896ff201895e27c0621eb8995293",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "3c46ba47341217b84d7675e72a9cf57a007c2f96e8d2ef866ab6c180173730b0",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "be971ce013b06d2a96a4a0e7b3752b558c66f9b4af973beffbe2a8bccd2949b0",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "2c9741c89086d1672c1e8e9b4a2377bf7486cfcd5203a4e975a8a652650e66ff",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "1ea3f09726c12b242bac66ca17e954a384f753a692805a0e3d87b18f9cf6d30e",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "32b0bb7dc241fb087f56a86960e55608de25e8f7f31978adfff1123d48499f7b",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "78d1218538e2622f61d5e4fc7c62c087af30efbb234a15bf53064dda4d154900",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "119a4900a99e98a377016d821439088b0a1c236e635325ddd382b22c131adc30",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "666e1f23806ae4b87c918e433356dcdb4820b11dea4278f1a02847b0e33607dd",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "7b622704f9f770d094e23aa6f7458af663fd64109bcafb234333455f899c8083",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "599c913db59bb1bd1169850aed9e63487e8805a4f56cb42a96c58588ecab7d3f",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "6ad4fe571d85c23db240b81d48fbd7ee4f65fb417ed5e7cb21864c87c2f6156e",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "3618267d2bc65cc458551d261693b1e24ee319ce86b601c041f4052970c2e14a",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e90b59e9cc0023ef256e2b79222e32c81d7ede697234ce055390d5eb04167753",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "after_sale_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "329a3821ce536d5e4615255ea756739724acd2064908db7d18801395bf5e0af2",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "bb0bb18d2f06342e535d8a2abd1df4f90dc9786e5fde7571728780a7b6beb5f2",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "142c19e529daf37a04379e66fd0a04518895e85ffd08001d96b78747ff02b018",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "704b7d1ac8de70852310f297cb9c0ff150745c3ecd2d5e3ec2f00938d8a04077",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "ca8694cfaee9a587b62ad6ac068c94f988034dbf52071ee539747ac92232d66e",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "ab7592550421f3920e85e3a650d33e061df45f43fe006827e7b59117cd848b24",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "5d8fed862638d129c87b420888bf3f310d910c83027db05aecd3a33d0cabbc05",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "1b63bc2c37bbb7118e49b10ab1f00169a53dfba219e9b3d3cc0160af4ee6660c",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "40d8301b9862bd81c087f07177197f2ebfbd606923f48528e3a25d916c5acad1",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4f15ca66e8dc8a9ad61c86248b293fb586104dae7d500b5d462340553ec0bb02",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "dbf6edd4b6aac020046a60d7696b31575d432611d2e36e22ce562118c22c16bb",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b90e7ef393d7406f8bfa40f76d5415c5bd9d5f56f8f7fc3dc52255822501ef79",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "dde03eb877e1a583f5a39a6631c2630e8d61ebe454b8c8c71d2b04d0b36667d2",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "9d88d43f206536fbec59a525067e19a55eaf8836fc9ee0b172d4d7125749bc56",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "15bd9c9dbedf3f068c9d97bfa1896646e7efd606cd5737c85259d2081356c3d1",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "8fdd9a1ff480a0a7e6c20d0cedf8730fac502ba4d67dda791e63f740384d3d93",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "aa5a1e16de1a7413fd57d5b7c15ef26fc554ab8b52c34d6f5c9876a950b76b81",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "01db0c5416788e37bea274637b0eea79486183a6fcb5452c4845f28820b1f1c8",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "fb04c99db5ae568e1bd6109f646eee76c3fef67ed30847ab12173d9c0e639044",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "15a5c46c37a7479136db4dfdce0b9794f36975c68bb8ab856706007429517836",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "519f71dbdf6976d54512e2ed472ab380f2db19593a85075172582399f0cb0a51",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "close"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "ce22fe2e33d1bf3ebfdd5328db6c222b561a31863e4db47168e1f8e8146cc9a7",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "d974dcada1224a1a4b55bce64678e6bee18145ac1d9465e967a1000caacacddd",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "dca49168c30d80de833d0431e43098f5cd6e64f0e1cc1b25244018421fa9e775",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a829cd118cba2d157eca7b4cb47c75538c59736819d90580d889d98f256ec150",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e13c1226c8c738f240c6d470d435a4526f5c38e0e4edb34aa4cdb4cbe54a3d04",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b9e0eaa576cafa5d9654aebc0daa30ad34b14cf0a184c87730597bbfd18ecac8",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a63bc3d5a3a31b9706996c1160870a126aec76aedca21b059708fc4c8945d64e",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "21204540dd1c15472fdc8837fd2727c44c6a344a95349a7eb4a5db9c06f2fa12",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "065d7f56c45d5d28d7c84946c66e372debf6a4b71f1d3387f15ad6348a02d505",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "36872d44b2037558e9336c90ce7a6d2a122444d651d2f4b37cc88c9cb77188c9",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "af8e6d45a9a5e28ef8e69d1ac5e7458a76d18e049e1b5fce8fb7fe2627171008",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "1cb00c5127f871463b839077593e56b33676e7c326ac6e81541efda5735768b9",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "dbc29e02aad8962af7a8cbf21a99df0bb0d2a5bdec779b7d947dbe896824c0f6",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "0f13f852e23e40bf27479475a04b204af1c2cf20f3e663568dfaff3bf1b98fd2",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "1bb1d95bbe994ff2316f4bfc909539bcf6e46bebd28112f74d9bfe5258d3f999",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "950ae645b9acd0500bf5e1e4f2dd3f71a9ade11fda2af794e3e2b0933deab23a",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "97dde21ef0279a837483b68bc9d37fdce3e1dd860c38a4f2415bf1b2b5febf41",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "ee1c667bcfd83f79a22a8cf8d6a1c3b3362ccd570a36aae5bd3862d5d1ae2043",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "56c835dfa53ddd39f73739c00b21897cbc79f05af3262e37ce46b9d1495b26ea",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "01c7df62447ac0024b77d0574f786321e7ff055f0f82b974a1d06d54cb624be6",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "29e40851f53f9995910b18d9f50e04a499e42fcea4b3a2342ae6306187aef92c",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "commit"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "f6093bb8576ff864d558dac3567b1462ba5ba6d04eb5bfd9018287d2bbe84865",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "cce5059bc0807d496db39e5f24ca2702efc54a8598b12513f75c516e20aeab9c",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "51b4a592a8024bd5f37eb9ad2475ca825ca4fc98b3e5f07f5be2d7fb857d35ae",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "1662c866a87aa8932cdc2ed4e1fb88b095d8277634e53657b59f80bf976af641",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b5a08f2db60bb4209dfd49001d04a1b700a5e79c208dae871366f768f7ad4c22",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "597fa067a44e936787d15e55cd18f66edf7e382002ea7a5d02889f9f49f470df",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4d510ed07e4e5a7aa8d1d59e188466fbb5360ec45c8d0ddb2a32fcfdcddaaceb",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "d1e7d081c9781f2d5650b00ab79db59d9ded402320526f99c01c035cd88d4377",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "24683c734f8c52b6d74c7c1caf820c787b3fc5c505818e9ac10e49a6d39ff73b",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "150aa91852acfbc5dc07c1c30187ce8f47471893f1fa8b8c0dc6a5fa8079743d",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "148f46f59fef5b134fcdb71bf728820374db3260d18109a5f3dbb446d2163136",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "d85abfd009ba5949bb781d0ae1455deacf3758941a80d976b34dd094faa7a985",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e9b66576b37445e07d523a837204c9b62ea1261c47a86ff3a9f9b8e4aca04e1f",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "79ccd3e4a8cbf7e286bf8a34eb28357e94802604befaa472b1a9432b558dc708",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "c7ff6e6e6ecfbd8f7094b9e29caff48bb4f1d756163d6cbe2f770832593b0af4",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "6690271c0f5cd6c8b39f29b85fcd754fc5dba97573c1af8b99f0f7dfc002975a",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e1ddfe59dfe490a97dc328f0f3ee8ed11672f9eb33e85325cb06eb0df23374ee",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "11ac076eaf13abcc4fb32070b6a2c7eec167d4c08f0cc6850010f32de7dcd166",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "9bdc5c29994901a681a708cd091943f3f5c36ce9b9cba618bdab89661640f97a",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "380433fd3b25b021f8ca2f758779259723c003e2af42e93f2b5584e02ef117d2",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "3498f90c134bbc71e929c9e1624f27ee46635e6861a9721091bc1962947e56b9",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "outbox"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a9c9c945016b433169ab1bf219cb2b80a8b8e3788635bdd2509a17c6de912db9",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4fb2271cdb89032595d90c4e9f29a6e85cc6f3bbe75c711d0a4cec0cc47a3433",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "2ab08a7f17b0a55140f1a184d3877e88945ada1b497b9052bea8a1651cdaec64",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "348a9dee4197e5cd0ac39e0abb0dfdd912ca688cd697efd2849b09206c87ff2b",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "086581915267b6a3f331e86823f1b52ecc6e3fbb910fe1abfb74534f4655cc17",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "710948d12b5555c4251bb1c14bee9d0e18fae1c85fedfe8e53f18e6d4d1522ff",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4bc37e1cbd9218d0b5620c790c4780a39006f498c058e510e511cf022005b3fa",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "8709acf0243e53a192c2f3ab75019243a24a6d1106da9f82078369c93b083892",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "af1e9ba27bce16d5470aa47f2f0b400be323532e8a702b8fa4f7a8c8f42bf127",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "b94b15df048f24d57805066dce4bf69a69eea390fb6af85d1c332f917d3fd773",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4deeacc4f4606314c457b078f42a209d0fc9604dc88c0818234aa3d5236801f0",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "5200b70b3753f944266ebde5df1f2c641f08b5de3315fa5f5781ff19498323d5",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "2a3d6abb007e1fe4c11274906857e84709125ffb4187d837a116863f9a1624c0",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "50e8447937bce5a9ad7901222b054cf3c07264f7e7710cb0880d770b43d1d0c5",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "8e3c739182ae78c6623e066053fd50ed30e71b4a88ee7f34ffefdafa62835b3e",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "2ddb09ae9280753c55ef62bcd7ce94948289a6a259faf2a7eb287120fdc10db8",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "f6cdb91907c83016ad809d6ff19925e5646403fa004c4168cbb5309e81eb7f7b",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e5239e1de737f05dee2fc0bba52c97bb17a3231db3e873942b37cb2ce023432f",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "f5a65381401cfd387673e25cccfc47d49e29932bac3eb3957cd3fd50d298bfc0",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "f96faf2423ea9ed3c9f5e5d35fd745085b0868a2cc1184e73bf20f0fee8e76e2",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "21477eeb050d9c0d4569fceedd9f1807cd05223bce22024366ae3128934aa3c6",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "reserve"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "0a733260dee730bc0a73b7b95967725c49b5c607f345f4ea69498cb4b8540a41",
+          "type": "metric",
+          "at": "2026-10-28T06:00:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a221f7ae0223b1f98972bb051e90e48e8ea5b443da247bb289da3f951a449818",
+          "type": "metric",
+          "at": "2026-10-28T06:00:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "87d9cdb013d68bc3af47591004f32c14d69bbc0aa736bc846015446f5999f1c9",
+          "type": "metric",
+          "at": "2026-10-28T06:00:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4feb7d3cfc0bddc17cf880156315ef913e5a72603253552290564aa5949f4652",
+          "type": "metric",
+          "at": "2026-10-28T06:00:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e69975321841e88d04c19699037fb7aa8b5040284e8af71fce329ebcf17f075c",
+          "type": "metric",
+          "at": "2026-10-28T06:01:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "9345da1ad4be00e40b6500af4ee62c41211dc8ce97c397467364cd113fa4fbcd",
+          "type": "metric",
+          "at": "2026-10-28T06:01:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "118ed5afcf2975c247dd6a85e27ca66c5cd4eaa2a34d0f470c40f367902383f1",
+          "type": "metric",
+          "at": "2026-10-28T06:01:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "4387fa9cd29e424667c21c70b487479280bfcfde9bca988299ea4ca8bb245f3c",
+          "type": "metric",
+          "at": "2026-10-28T06:01:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "3bebb97ca5f03500655d5ca9634528650b04b568b433b9bfe1af1397007b4fff",
+          "type": "metric",
+          "at": "2026-10-28T06:02:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "bb633979bc28cf45820800b24e008e8a09ff31bf7ba308677a6671cf83fde3fc",
+          "type": "metric",
+          "at": "2026-10-28T06:02:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "c74c9a2af00e75545e43771d86d7a7a18190285eebcce4ffa243ff515cf3fa6c",
+          "type": "metric",
+          "at": "2026-10-28T06:02:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a40c629316adab741841402cc33dd1cde51a60d6c41ea51b2379a29182c4bfcc",
+          "type": "metric",
+          "at": "2026-10-28T06:02:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "483fd1d84ef3bc6cf9b6526b82eeaafec40516ef22e56cb8993dbcdbcef5b141",
+          "type": "metric",
+          "at": "2026-10-28T06:03:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "28454986d735505dbd76b9e27b2a064b6a10203b0cc9388526a35be980a6af9a",
+          "type": "metric",
+          "at": "2026-10-28T06:03:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "7c425bf2c96daf875d9dabf09797af525eaaaf689f013498f0913af8a6fd14a5",
+          "type": "metric",
+          "at": "2026-10-28T06:03:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "43ef393bdc10fa4311fbd015156c05455a9b0873a286d4ee284248f319b21430",
+          "type": "metric",
+          "at": "2026-10-28T06:03:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "6aea507d773b39a241f13744d688db3464f2994ce381ab73a921e73a1565d5a1",
+          "type": "metric",
+          "at": "2026-10-28T06:04:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "a83bf154368493845a39a774b2310fefb53eef3a950ce733b70ccc190da8584c",
+          "type": "metric",
+          "at": "2026-10-28T06:04:15Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "735de4eb4f8009177c6ddd03dcc393be5637d2a1bad826e790fba01519141859",
+          "type": "metric",
+          "at": "2026-10-28T06:04:30Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "d8cebf19fc0b618ea47bd377454c26aabb38df2d98c5d4df65fe3c7d5f8ce83a",
+          "type": "metric",
+          "at": "2026-10-28T06:04:45Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.012504Z",
+          "id": "e3bfb645fff54437f13a78570982980008c91541afc23126d7a70055969ecdfb",
+          "type": "metric",
+          "at": "2026-10-28T06:05:00Z",
+          "service": "order-service",
+          "environment": "local",
+          "fields": {
+            "metric_key": "workflow_backlog",
+            "step": "tech_refund"
+          },
+          "value": 0
+        }
+      ],
+      "requests": 1,
+      "digest": "1aa4ed23a11d49d17fd2556dd8c7c9ea591c885dd94f2f8f6f51ec87e5cb05a7"
+    },
+    {
+      "query": {
+        "kind": "logs",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 100
+      },
+      "source": "loki",
+      "query_id": "62d2b0a8b149b22e2f7dbf0b07f603b5c04914094fe646f092aa2c3f43a75760",
+      "canonical_query": "/loki/api/v1/query_range?direction=forward\u0026end=1793167500000000000\u0026limit=100\u0026query=%7Bservice_name%3D%22order-service%22%2Cdeployment_environment_name%3D%22local%22%7D\u0026start=1793167200000000000",
+      "collected_at": "2026-10-28T07:36:48.016161Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "PARTIAL",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 4,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "PARTIAL",
+        "missing_reasons": [
+          "free_text_omitted"
+        ],
+        "latest_event_at": "2026-10-28T06:03:33.803666Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:48.016161Z",
+          "id": "5d4e019b2abe45da8224fbee3e0c42e1fb041809e307dfa105f7e2bcd29d6ba1",
+          "type": "log",
+          "at": "2026-10-28T06:03:32.351414Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "36005901165b292d197b424a8bceb597",
+          "span_id": "e1704f849b25969b",
+          "fields": {
+            "body_omitted": "true",
+            "severity_text": "INFO",
+            "source_record_digest": "50d18468f335e3c784ba39369a596b7194ef8e20e016c116f8a0c283af793201"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.016161Z",
+          "id": "9137dab125bb85d61f816da98ba0c05b01f569c2cdb47a3cae2545b0d50140e3",
+          "type": "log",
+          "at": "2026-10-28T06:03:32.37931Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "e87dcbcf8c39bb5be11af7e724edc4e3",
+          "span_id": "15b3f1fbfba9adfb",
+          "fields": {
+            "body_omitted": "true",
+            "severity_text": "INFO",
+            "source_record_digest": "4096722ee4113ad66f67b73b0a7e67f57952c6c36b9669a61b5741f005471149"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.016161Z",
+          "id": "7ab956adc68d416c685daecc17c8038118455d8f78472f33a66a0bbbd96135d6",
+          "type": "log",
+          "at": "2026-10-28T06:03:33.78856Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "ac472fbd56e0361c",
+          "fields": {
+            "body_omitted": "true",
+            "severity_text": "INFO",
+            "source_record_digest": "ccf654a4515b213e7fe9a6c2532ffe91a0b9c795498058310bfa2a45fe90c87f"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.016161Z",
+          "id": "eaa5d2efa0a7edb7354757c1e9402d26e63dbbc2c0e5fb756254391c666f1766",
+          "type": "log",
+          "at": "2026-10-28T06:03:33.803666Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "453940893d01dacc",
+          "fields": {
+            "body_omitted": "true",
+            "severity_text": "INFO",
+            "source_record_digest": "076763f2b56a2106900d314429f84db667f5a115a19c9d1dc65379935da7e326"
+          }
+        }
+      ],
+      "requests": 1,
+      "digest": "e2b2d47612d80bf3f1760aa385994451a2d758bb3225c1892462750030dae03a"
+    },
+    {
+      "query": {
+        "kind": "traces",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 20
+      },
+      "source": "jaeger",
+      "query_id": "ee2c810c375cfebd66a54cb003d05dbb8100a39497315e53e14e5408eee14412",
+      "canonical_query": "/api/traces?end=1793167500000000\u0026limit=20\u0026service=order-service\u0026start=1793167200000000\u0026tags=%7B%22deployment.environment.name%22%3A%22local%22%7D",
+      "collected_at": "2026-10-28T07:36:48.053152Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "AVAILABLE",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 4,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "UNKNOWN",
+        "missing_reasons": [],
+        "latest_event_at": "2026-10-28T06:03:33.799246Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:48.053152Z",
+          "id": "23a844680fd16d16e493c5597d0203c7ef367b1074b7bb854c1c19739610d105",
+          "type": "trace_summary",
+          "at": "2026-10-28T06:03:33.799246Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "fields": {
+            "visible_spans": "7"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.053152Z",
+          "id": "a7ce0fc4ebba55cdc626c60e70ffb8b3ef73d5650e9d8c00ad99f87ceebe9c25",
+          "type": "trace_summary",
+          "at": "2026-10-28T06:03:33.773871Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "fields": {
+            "visible_spans": "7"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.053152Z",
+          "id": "9e5b73889f4ba022057e0117c4e4e71c76c117c004e31d3e223ccae014d5e393",
+          "type": "trace_summary",
+          "at": "2026-10-28T06:03:32.322968Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "36005901165b292d197b424a8bceb597",
+          "fields": {
+            "visible_spans": "6"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:48.053152Z",
+          "id": "58af0f325be311fa7a13e897b93878ad38222a88bdbf9f4ef7561ed76bf271ba",
+          "type": "trace_summary",
+          "at": "2026-10-28T06:03:32.357029Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "e87dcbcf8c39bb5be11af7e724edc4e3",
+          "fields": {
+            "visible_spans": "6"
+          }
+        }
+      ],
+      "requests": 1,
+      "digest": "11e58c44ff725e894ce013e395af5e9e57d97085bbfe14fe246b052160edbb17"
+    },
+    {
+      "query": {
+        "kind": "trace",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 200,
+        "trace_id": "dacba19eef748b9e4d088cb7d8527508"
+      },
+      "source": "jaeger",
+      "query_id": "0126aece45e5b67f109f759a3a7a600338c20722802c631f93074cbc0d82b05d",
+      "canonical_query": "/api/traces/dacba19eef748b9e4d088cb7d8527508?",
+      "collected_at": "2026-10-28T07:36:49.462082Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "AVAILABLE",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 7,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "UNKNOWN",
+        "missing_reasons": [],
+        "latest_event_at": "2026-10-28T06:03:33.803121Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "a3346b551d3d41c29e3bfb08d359fb27061502317399cf9ba7f3fcaa713f5236",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.799475Z",
+          "service": "gateway-h5",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "9fe9495d8a996ab8",
+          "fields": {
+            "duration_us": "4441",
+            "operation": "refund.v1.RefundService/ListMyRefunds",
+            "rpc.method": "ListMyRefunds",
+            "rpc.service": "refund.v1.RefundService",
+            "rpc.system": "grpc"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "d66f3a35d47189cf"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "a27cf9699ad4f2ebb15b8f55107aa24fe110c469b1e5a0acadec41c3cd275859",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.799246Z",
+          "service": "gateway-h5",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "d66f3a35d47189cf",
+          "fields": {
+            "duration_us": "4733",
+            "operation": "/frontend/refund"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "12a670baf763a1f0d6e0a8768f53f0e4b5923c6c13b8b9e42c257c21bdefb279",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.800829Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "8fa5924fa08ae025",
+          "fields": {
+            "duration_us": "866",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "453940893d01dacc"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "e553ecef015ed2e878e55fdaf8164a76fce009a39dd06c18ec30bd72e46dbb18",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.801744Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "b2a8ef71b66fdf8c",
+          "fields": {
+            "duration_us": "702",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "453940893d01dacc"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "2c425ec00d58acc65d0e8e59fd9315112d2982c8042cd28009e3aa24f3180731",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.802513Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "0393f6225178921b",
+          "fields": {
+            "duration_us": "567",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "453940893d01dacc"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "ca4aeea546d5ec1002a6e86cb937638983e051a2c2b9a9d00d6c79473b6932fe",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.803121Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "2d02b9166e5d76a3",
+          "fields": {
+            "duration_us": "514",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "453940893d01dacc"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.462082Z",
+          "id": "00a2891834f8ada85b5eae37de16f09d0c91c463fcca450cc1d9c548d565f8ce",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.800244Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+          "span_id": "453940893d01dacc",
+          "fields": {
+            "duration_us": "3490",
+            "operation": "refund.v1.RefundService/ListMyRefunds",
+            "rpc.method": "ListMyRefunds",
+            "rpc.service": "refund.v1.RefundService",
+            "rpc.system": "grpc"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "dacba19eef748b9e4d088cb7d8527508",
+              "span_id": "9fe9495d8a996ab8"
+            }
+          ]
+        }
+      ],
+      "requests": 1,
+      "digest": "638febb1a5cce2bc3f5eb86dd1d256e5224aace07cf152083345d3a50df81be1"
+    },
+    {
+      "query": {
+        "kind": "trace",
+        "service": "order-service",
+        "environment": "local",
+        "start": "2026-10-28T06:00:00Z",
+        "end": "2026-10-28T06:05:00Z",
+        "limit": 200,
+        "trace_id": "690181816016ae290d1fcb18ed724326"
+      },
+      "source": "jaeger",
+      "query_id": "5376b906ce0319bb3873b6b88ee4c6ed2851ee9e345168d1d7b658352973d447",
+      "canonical_query": "/api/traces/690181816016ae290d1fcb18ed724326?",
+      "collected_at": "2026-10-28T07:36:49.465595Z",
+      "policy_version": "telemetry-v2.1/adapter-v1",
+      "source_status": "AVAILABLE",
+      "source_quality": {
+        "reachability": "REACHABLE",
+        "query_outcome": "SUCCEEDED",
+        "returned_records": 7,
+        "truncated": false,
+        "freshness": "UNKNOWN",
+        "coverage": "UNKNOWN",
+        "missing_reasons": [],
+        "latest_event_at": "2026-10-28T06:03:33.780539Z"
+      },
+      "count_basis": "OBSERVED_SAMPLE",
+      "records": [
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "0dac684d2f619572afe51135deffe85027967747b6f58665cbb6f17b2f4b2970",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.773871Z",
+          "service": "gateway-h5",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "eaa0f703075fcd3b",
+          "fields": {
+            "duration_us": "15640",
+            "operation": "/frontend/refund"
+          }
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "e4bb0553d83150c8d66c38e2ef986cdf67ca0ee915fade7a1e231ad0791c0549",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.776422Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "22176d9f6c07a3f8",
+          "fields": {
+            "duration_us": "1323",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "ac472fbd56e0361c"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "99bc5824c0a1d6d5d14222cdc87963cff2f53c38a93891f1bbb5a0a6224eeaeb",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.777843Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "97bb40d035b6af07",
+          "fields": {
+            "duration_us": "1423",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "ac472fbd56e0361c"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "20c3bffac7914d378e0f59e675699e8fd00f9fb6d6be8c25dcc6b9f91789ebf1",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.779376Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "67de57a97c29b509",
+          "fields": {
+            "duration_us": "1091",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "ac472fbd56e0361c"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "5a62069baae7c257a7fbae814cf5ab266504b39b39bed6fb77acaae7f8078438",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.780539Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "5d37991b9750df8a",
+          "fields": {
+            "duration_us": "7967",
+            "operation": "DB.QueryContext"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "ac472fbd56e0361c"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "01d0badac330bfa3ef9597a63bd7577bdf8aee6b63a4f7cbcc0d78cd94d01e69",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.775642Z",
+          "service": "order-service",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "ac472fbd56e0361c",
+          "fields": {
+            "duration_us": "13014",
+            "operation": "refund.v1.RefundService/ListMyRefunds",
+            "rpc.method": "ListMyRefunds",
+            "rpc.service": "refund.v1.RefundService",
+            "rpc.system": "grpc"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "26f0b6fa56f6f369"
+            }
+          ]
+        },
+        {
+          "collected_at": "2026-10-28T07:36:49.465595Z",
+          "id": "1a09ef3a2a3381830c82c7ed52f5c8085d2d9b4f8871529ac71b77b96b645524",
+          "type": "span",
+          "at": "2026-10-28T06:03:33.774503Z",
+          "service": "gateway-h5",
+          "environment": "local",
+          "trace_id": "690181816016ae290d1fcb18ed724326",
+          "span_id": "26f0b6fa56f6f369",
+          "fields": {
+            "duration_us": "14615",
+            "operation": "refund.v1.RefundService/ListMyRefunds",
+            "rpc.method": "ListMyRefunds",
+            "rpc.service": "refund.v1.RefundService",
+            "rpc.system": "grpc"
+          },
+          "references": [
+            {
+              "type": "CHILD_OF",
+              "trace_id": "690181816016ae290d1fcb18ed724326",
+              "span_id": "eaa0f703075fcd3b"
+            }
+          ]
+        }
+      ],
+      "requests": 1,
+      "digest": "06ff81a0ba36ee6455b8e9384f2923a6aac39d87b90bf879125017c3e3168e83"
+    }
+  ],
+  "digest": "a713690d76e713df18d0102a44772c49a88f899c14c994daede5a83d817ae467"
+}

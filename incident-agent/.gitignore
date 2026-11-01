@@ -1,0 +1,33 @@
+# Binaries and build output
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+bin/
+dist/
+
+# Test and coverage output
+*.out
+coverage.out
+coverage.html
+
+# Dependencies and workspaces
+vendor/
+go.work.sum
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local runtime data
+tmp/
+data/

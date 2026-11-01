@@ -1,0 +1,131 @@
+# 文档维护记录
+
+## 2026-11-01 · Run 容量与终态查询
+
+- 完成[任务 0008](../tasks/0008-capacity-and-results.md)本机验收：create 原子校验活跃数上限和每活跃 Run 8MiB 内存预留，终态释放名额，接管和重复 ID 不占额。
+- 决定：活跃数取索引基数之和，不另设计数器；`INCIDENT_MAX_ACTIVE_RUNS` 无默认值，因尚无压测依据；maxmemory 改为必需。
+- status/cancel 改为 `run-result-v1` 投影，只有 COMPLETED 带报告；新增 evidence 模式 `run-evidence-v1`；区分 CORRUPT、UNKNOWN_SCHEMA、NOT_FOUND。均为不兼容的 CLI 变更，状态 schema 不变。
+- 完整 `make release-check` 通过。未压测、未运行远端 CI、未调用真实供应商；详见[改动报告](reports/0008-capacity-and-results.md)。
+- 新增[任务 0009](../tasks/0009-online-investigation.md)为下一切片，修正 README 中过时的当前任务链接。
+
+## 2026-11-01 · 生产工程基线与后续路线
+
+- 完成[任务 0007](../tasks/0007-production-baseline.md)本机验收：Go 1.26.10、固定 lint v2.15.0/govulncheck v1.9.0、只读格式检查和统一 release-check。
+- 完整发布检查通过，含 race、真实 Redis 恢复、五个命令构建；普通与 Redis 标签扫描均无已知可达漏洞报告，解决旧工具链扫描阻断。
+- 新增仓库根 GitHub Actions，固定 Action 提交与只读权限；actionlint 本地通过，远端 CI 尚未运行。
+- 新增[生产路线](development/production-roadmap.md)、[发布指南](development/release-checks.md)、[改动报告](reports/0007-production-baseline.md)和[下一阶段容量/终态任务](../tasks/0008-capacity-and-results.md)，维护渐进式入口。
+- 未改变运行依赖、调查状态协议或预算；未修改商城、全局 Go 环境，未调用真实供应商，未推送或部署。
+
+## 2026-11-01 · Harness checkpoint 与 Worker 恢复
+
+- 完成任务 0006 本切片：共享 Execute/Resume、版本化 checkpoint、持久调用账目、保守预算恢复、启动/周期扫描与续租。
+- 新增 incident-worker 的 enqueue/work/status/cancel，冻结模型/Fixture 配置；旧内存入口保留。
+- 验证确认丢失、模型提交后的真实进程退出及租约到期接管、未知调用不退款/不重发、CLI 与取消/到期收尾。
+- 新增[Worker 指南](development/worker-recovery.md)和[改动报告](reports/0006-worker-recovery.md)。商城未改动；真实供应商、在线持久调查、全局容量和工具链安全更新仍待验收。
+
+## 2026-11-01 · Redis Go 客户端
+
+- 用户授权后固定 go-redis/v9 v9.20.1，新增 go.sum，保持 Go 1.25。
+- 新增显式配置、TLS 约束、有界连接与超时、无自动重试的客户端；保留原子协议响应码和不确定写入语义。
+- 功能验证通过；govulncheck 报告当前 Go 1.25.3 有 29 项可达标准库漏洞，生产安全验收未通过。
+- 增加客户端隔离、幂等、接管、超时读回及重启测试；Harness 与 Worker 接线仍待实现。详见[增量报告](reports/0006-redis-client.md)。
+
+## 2026-10-31 · Redis 原子状态协议切片
+
+- 启动[任务 0006](../tasks/0006-redis-recovery.md)，新增 Lua 状态协议、embed 入口与独立 Unix socket Redis 测试。
+- 覆盖租约、epoch/version、调用预留、幂等结果、取消/到期终结、容量拒绝及 AOF 正常重启读回。
+- 新增[协议指南](development/redis-state.md)与[改动报告](reports/0006-redis-protocol.md)，同步当前入口。Go 客户端和 Harness 恢复尚未接线，未新增依赖或改动商城。
+
+## 2026-10-31 · 模型调用边界、输入选择与 Token 预算
+
+- 完成[任务 0005](../tasks/0005-model-boundary.md)：新增 ModelDecider、Provider 接口、有界上下文和内存调用账目；输入和输出共同预留，调查保留报告额度，失败/未知 usage 不退款，超预留停止后续调用。
+- 新增固定地址的 Chat Completions HTTP Adapter：显式 HTTPS/回环配置，无代理、重定向或应用重试，超时/响应有界；密钥和原始错误正文不落盘。
+- 新增 `incident-model` 命令、请求示例和构建目标；原有 `incident-investigate` 保持完全离线。策略为 harness-v3，Run 增加 model_calls。
+- 定向测试、make verify、make build、go mod verify 通过；构建后的命令对本地模拟服务完成两次模型调用、四条日志、零遥测后端请求，模拟 usage 合计 1,000 Token，报告 INCONCLUSIVE/UNKNOWN。
+- 新增[Provider 指南](development/model-provider.md)与[改动报告](reports/0005-model-boundary.md)，同步 README、AGENTS、任务和渐进式入口；收尾核对任务 0004 的既有运行产物。
+- 无新增依赖，未修改商城或历史 Bundle，未调用真实供应商。调用账目尚不持久；真实效果、身份认证、独立 Redis 与恢复等生产门槛明确保留待验收。
+- 启用模型模式前按指南配置四项环境变量，确认模型上下文和匿名数据外发范围；默认不选择供应商、不自动读取既有密钥。
+
+## 2026-10-29 · 确定性日志聚合
+
+- 完成[任务 0004](../tasks/0004-log-patterns.md)：随已保存 logs 查询生成最多十组结构摘要，保留样本口径、首末时间、三个代表引用、来源质量与省略组数；不新增后端请求。
+- Run/View 增加 log_patterns，摘要计入容量并提供隔离副本；策略升级为 offline-harness-v2。原始脚本和历史 Bundle 保持兼容。
+- 定向测试、make verify、make build、go mod verify 通过；离线示例扫描四条日志，生成一组、三个有效引用，仍为七次决策、169 条记录和零后端请求。
+- 新增[使用指南](development/log-patterns.md)和[改动说明](reports/0004-log-patterns.md)，同步任务、状态与阅读入口。无需调整商城；真实模型、Token 预算与效果评测仍未实现。
+
+## 2026-10-29 · 补充任务 0003 改动说明
+
+- 按用户要求新增[本轮改动报告](reports/0003-offline-investigation.md)，解释修改前后行为、文件职责、执行流程、既有验证结果与未完成范围。
+- 在索引、离线使用指南和任务 0003 中补充入口。本次仅修改文档，核对文件链接与围栏，不重跑 Go 测试或商城实验；工程测试结果引用本轮此前的已执行记录。
+
+## 2026-10-29 · 离线单次调查 Harness 与报告 Guard
+
+- 按用户“暂不修改商城，继续 Agent”的范围，实现[任务 0003](../tasks/0003-offline-investigation.md)。任务 0002 的固定版本故障数据仍待验收；将商城改动需先提醒用户审查写入 AGENTS。
+- 新增 `app/investigation`：冻结查询范围、决策 schema、同查询最多两次、无进展检测、12 次决策/16 次实际请求/时间与容量上限、取消和确定性 INCONCLUSIVE 收尾。
+- 新增 Report Guard：本 Run 记录引用、排序时间线、假设支持/反例、有限敏感标记筛选及一次修正；恢复判断暂只接受 UNKNOWN，引用存在不等于语义成立。
+- 新增脚本 Decider 与 `incident-investigate`，输出本次证据、步骤、报告和来源摘要；只运行离线 Fixture，文件不覆盖。同步[使用指南](development/offline-investigation.md)、README、设计状态和渐进式入口。
+- 新包定向测试与 `make verify`、`make build`、`go mod verify` 通过；构建后的 CLI 实测 7 次脚本决策、169 条记录、0 次后端请求，输出 INCONCLUSIVE/UNKNOWN，4 条事实引用核查通过。
+- 不新增依赖，不修改商城代码或运行服务，不改写既有历史 Bundle；未执行在线故障实验或调用模型。Token 预算、输入压缩、持久 Run/恢复、告警和工作台尚未实现，本切片不是模型效果验收。
+- 手动体验：按使用指南执行离线 CLI，选择新的输出路径；无需调整商城或启动基础设施。
+
+## 2026-10-28 · 确认本机商城入口与实验前置条件
+
+- 将用户提供的商城路径加入项目 AGENTS，并在[基线文档](integration/goframeshop-baseline.md#本机入口与运行状态)集中记录本机核对结果；同步任务 0002 的剩余条件。
+- 当前仓库 HEAD 为 `2f25dc5`，运行进程对应二进制记录 `bb921e9` 且构建时存在修改；区分工作区版本、二进制元数据与历史遥测来源，沿用旧设计基线和样本 `unknown`。
+- 核对实验子测试入口与端口检查：四个业务服务正在运行；实验还检查 gateway-h5 `8199`。记录 T3 单场景选择方式，提示完整 T9 的队列清空行为。
+- 只读核对 Git、进程、构建元数据和实验源码，并检查 Markdown 链接；仅修改 Agent 文档，未运行商城实验、停止服务、修改上游文件或重跑 Go 测试。后续固定版本采样需先完成基线核对与实验运行环境准备。
+
+## 2026-10-28 · 实现三源只读查询与冻结证据回放
+
+- 新增 `internal/telemetry` 查询/证据契约、三源 HTTP Adapter、Fixture Replay、采集应用层与 `incident-query` CLI；使用标准库，不新增第三方依赖。
+- 实现服务/环境/时间/字段白名单、固定 PromQL/LogQL、请求前扣预算、取消/超时、有限重试、响应大小限制、来源质量与未定义值处理；保留 Trace 引用并裁剪越界 Span。
+- 首版省略日志正文和异常栈，导出时一致匿名化关联 ID；快照限定字段并校验摘要，拒绝覆盖既有输出，离线按冻结数据过滤。当前没有分页游标或持久 Run。
+- 新增 build 的查询二进制和显式 `make test-integration`，同步[使用指南](integration/query-adapters.md)、[接入报告](reports/0002-readonly-integration.md)及项目状态入口。
+- 本机三源历史查询得到 169 条结构记录，保存于 [observed-20261028](../testdata/telemetry/observed-20261028/README.md)；回放返回相同条数、0 次后端请求。`make verify`、`make build`、显式在线集成测试及回归测试通过。
+- 商城工作区存在后续提交和未提交修改，历史遥测运行版本未证实，样本标记 unknown；未修改商城或运行故障实验。任务 0002 继续保持进行中，固定版本 D1/D3/N1 与证据不足对照仍待验收；不宣称模型诊断、恢复或效果成绩。
+- 使用时在项目目录 `make build`，按指南执行回放或准备真实查询窗口；在线集成测试需要额外指定 `INCIDENT_INTEGRATION_QUERIES`，不启动依赖也不自动跳过。
+
+## 2026-10-28 · 维护 AGENTS 与渐进式文档入口
+
+- 阅读现有 15 份项目 Markdown，沿用项目 `AGENTS.md` 作为规则入口；在工作区根目录添加短入口，避免从父目录工作时漏读项目约束。
+- 整理 [AGENTS.md](../AGENTS.md) 为项目状态、任务路由、架构边界与不变量；明确文档请求不自动启动当前开发任务。
+- 新增[渐进式阅读指南](reading-guide.md)：固定约束 → 任务定位 → 专题契约 → 实现/证据；按任务列出章节、深入条件和停止条件。
+- 新增[工作流程与维护规则](development/workflow.md)，落实按复杂度选择流程、按风险验证、内容归属、变更同步与交接要求。
+- 同步索引、README、架构导航和任务 0002，将全量必读清单改为按工作项读取。保留当前开发切片和全部待验收状态。
+- 本次只改 Markdown；18 份 Markdown 的 162 个本地链接、代码围栏、路由涉及的章节编号和 8 个现有 Makefile 命令检查通过，并复核当前状态与任务范围一致。未运行 Go 测试、商城实验或模型评测，未重新核验上游源码。沿用既有固定提交基线，不新增功能或实测成绩。
+
+## 2026-10-28 · 统一整体设计、简历目标与产品闭环
+
+- 重写用户指定的 [03 整体设计](../03-日志诊断Agent详细设计.md)，统一产品范围、选型理由、代价与实施顺序，加入产品闭环图、整体架构图和执行时序图。
+- 新增 [04 简历目标稿](../04-IncidentLens简历目标稿.md)，包含完整稿、一页压缩稿及证据要求；全部标为待实现，不填写虚构成绩。Agent 框架采用现有 net/http。
+- 采纳参考项目的产品启发，补充精确告警归并、日志结构聚合、来源质量、快照回查与人工恢复验证；不复制其采集栈或未经核验的 HA／模型能力。
+- 同步调查协议、遥测契约 v2.1、评测、任务边界、README 与索引。原 overview 改为导航，避免两套整体设计分叉。
+- 本次只改 Markdown；未开发 Agent、运行商城实验或取得诊断成绩。已检查 15 份 Markdown 的代码围栏与 87 个本地链接；主设计 3 张图通过 Mermaid 语法解析。未运行业务测试，文档校验不代表功能验收。
+
+## 2026-10-27 · 完成文档复核
+
+确认 13 份文档的入口与状态一致，58 个相对链接、36 个固定提交源码链接检查通过；旧商城建设任务和自研 KV 不再出现在有效实施路线中。当前任务仍为 0002，尚未开始 Adapter 开发或在线接入验收。
+
+## 2026-10-26 · 接入已完成商城，替换旧实验场规划
+
+### 范围与依据
+
+用户确认 GoFrame 商城已完成、旧小型实验场废弃、不需要自研 KV。本次读取上游提交 `385d3649b4f38f1db82e65aade57b00e10badb02` 的业务、遥测、Compose 与故障实验代码，并更新 Agent 文档；未改 Agent Go 代码或上游商城。
+
+### 变更
+
+- 更新 README、AGENTS 与索引，区分商城实现、Agent 骨架和目标设计。
+- [ADR-0002](adr/0002-reuse-goframeshop.md) 替代旧实验场决定；旧 ADR/任务保留废弃标记，当前入口改为[商城接入任务](../tasks/0002-goframeshop-integration.md)。
+- [代码基线](integration/goframeshop-baseline.md) 记录固定源码链接、部署版本、可复用能力与接入差距。
+- [遥测契约 v2](telemetry/data-contract.md) 采用实际 11 个服务名、10 个指标与 7 类日志事件，复用 Jaeger，取消 Tempo 路线。
+- 明确 DB 等待指标的误导性名称、业务积压与 MQ 队列的区别、Loki body/metadata 与 stdout JSON 的差异、跨 Trace 关联及告警持续阈值。
+- [调查设计](architecture/investigation-design.md) 补齐任务重新发现、续租与业务版本分离、一次提交结果、模型预算审计、取消/截止与确定性收尾。
+- [评测方案](evaluation/plan.md) 分开诊断、Harness 和在线验证；隔离 failpoint stderr/实验真值；补充人工反馈和恢复验证闭环。
+- Agent 保留 net/http 骨架，独立持久 Redis 为待实现设计；移除自研 KV 的未来任务。
+
+### 验证与后续操作
+
+- `make test`：通过，现有 httpapi/app 测试通过，cmd 无测试。
+- Markdown 相对链接、代码围栏、固定提交源码路径和遗留规划一致性检查通过；指标/事件/服务名称已与该 SHA 的源码交叉核对。
+- 未启动商城、未运行 `make fault-trade`、未实测遥测查询或 Agent 诊断效果；上游实验成绩仅按来源引用。
+- 本次不需要迁移数据库或调整运行环境。下一步按任务 0002 在独立商城环境验收只读查询与脱敏 Fixture，再推进 Agent 实现。

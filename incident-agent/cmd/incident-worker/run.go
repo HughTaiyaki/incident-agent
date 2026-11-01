@@ -1,0 +1,168 @@
+package main
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/redisstate"
+	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
+	"github.com/hughtaiyaki/incident-agent/internal/app/worker"
+	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
+)
+
+// exitOverloaded lets callers retry a refused enqueue; nothing was written.
+const exitOverloaded = 3
+
+func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("incident-worker", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	mode := flags.String("mode", "", "enqueue, work, status, evidence, cancel")
+	id := flags.String("id", "", "operator run ID (enqueue/status/evidence/cancel)")
+	requestPath := flags.String("request", "", "bounded request JSON (enqueue)")
+	fixturePath := flags.String("fixture", "", "verified telemetry bundle (enqueue/work)")
+	once := flags.Bool("once", false, "process one candidate scan and exit")
+	if err := flags.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if flags.NArg() != 0 {
+		return 2
+	}
+	fail := func(err error) int { _, _ = fmt.Fprintln(stderr, err); return 1 }
+	switch *mode {
+	case "enqueue", "status", "evidence", "cancel":
+		if *id == "" {
+			return 2
+		}
+	case "work":
+	default:
+		return 2
+	}
+	store, err := redisstate.New(redisstate.Config{Network: os.Getenv("INCIDENT_REDIS_NETWORK"), Address: os.Getenv("INCIDENT_REDIS_ADDRESS"), Namespace: os.Getenv("INCIDENT_REDIS_NAMESPACE"), Username: os.Getenv("INCIDENT_REDIS_USERNAME"), Password: os.Getenv("INCIDENT_REDIS_PASSWORD")})
+	if err != nil {
+		return fail(err)
+	}
+	defer func() { _ = store.Close() }()
+	if *mode == "status" || *mode == "evidence" || *mode == "cancel" {
+		var view any
+		var err error
+		switch *mode {
+		case "status":
+			view, err = worker.ReadResult(ctx, store, *id)
+		case "evidence":
+			view, err = worker.ReadEvidence(ctx, store, *id)
+		default:
+			view, err = worker.CancelRun(ctx, store, *id)
+		}
+		if err != nil {
+			return fail(err)
+		}
+		if err := json.NewEncoder(stdout).Encode(view); err != nil {
+			return fail(err)
+		}
+		return 0
+	}
+	if err := store.CheckPersistence(ctx); err != nil {
+		return fail(err)
+	}
+	maxActive := 0
+	if *mode == "enqueue" {
+		// No default: a safe limit depends on the deployment's memory budget.
+		maxActive, err = strconv.Atoi(os.Getenv("INCIDENT_MAX_ACTIVE_RUNS"))
+		if err != nil || maxActive < 1 || maxActive > worker.MaxActiveLimit {
+			return fail(errors.New("explicit INCIDENT_MAX_ACTIVE_RUNS required"))
+		}
+	}
+	source, err := os.Open(*fixturePath)
+	if err != nil {
+		return fail(errors.New("cannot open fixture"))
+	}
+	bundle, err := telemetry.ReadBundle(source)
+	_ = source.Close()
+	if err != nil {
+		return fail(err)
+	}
+	model := os.Getenv("INCIDENT_MODEL_NAME")
+	endpoint := os.Getenv("INCIDENT_MODEL_ENDPOINT")
+	window, err := strconv.Atoi(os.Getenv("INCIDENT_MODEL_CONTEXT_WINDOW"))
+	if err != nil {
+		return fail(errors.New("explicit model window required"))
+	}
+	provider, err := modelhttp.New(modelhttp.Config{Endpoint: endpoint, Model: model, APIKey: os.Getenv("INCIDENT_MODEL_API_KEY")})
+	if err != nil {
+		return fail(err)
+	}
+	defer provider.Close()
+	providerID := telemetry.Hash([]byte(endpoint))
+	if *mode == "enqueue" {
+		f, err := os.Open(*requestPath)
+		if err != nil {
+			return fail(errors.New("cannot open request"))
+		}
+		data, err := io.ReadAll(io.LimitReader(f, 16385))
+		_ = f.Close()
+		if err != nil || len(data) > 16384 {
+			return fail(errors.New("invalid request size"))
+		}
+		var request investigation.Request
+		if err := investigation.Decode(data, &request); err != nil {
+			return fail(err)
+		}
+		job := worker.Job{Request: request, Model: model, Window: window, FixtureDigest: bundle.Digest, ProviderID: providerID}
+		if err := worker.Enqueue(ctx, store, *id, job, maxActive); err != nil {
+			fail(err)
+			if errors.Is(err, worker.ErrOverloaded) {
+				return exitOverloaded
+			}
+			return 1
+		}
+		_, err = fmt.Fprintln(stdout, "queued", *id)
+		if err != nil {
+			return fail(err)
+		}
+		return 0
+	}
+	var random [16]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return fail(err)
+	}
+	w := worker.Worker{Store: store, Owner: hex.EncodeToString(random[:]), Build: func(_ context.Context, job worker.Job) (investigation.Provider, investigation.Querier, error) {
+		if job.Model != model || job.Window != window || job.ProviderID != providerID || job.FixtureDigest != bundle.Digest {
+			return nil, nil, errors.New("worker configuration does not match frozen job")
+		}
+		policy, err := investigation.ValidateRequest(job.Request)
+		if err != nil {
+			return nil, nil, err
+		}
+		replay, err := fixture.New(bundle, policy)
+		return provider, replay, err
+	}}
+	if *once {
+		ids, err := store.Candidates(ctx, 32)
+		if err != nil {
+			return fail(err)
+		}
+		for _, id := range ids {
+			if err := w.Process(ctx, id); err != nil {
+				return fail(err)
+			}
+		}
+		return 0
+	}
+	if err := w.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		return fail(err)
+	}
+	return 0
+}
