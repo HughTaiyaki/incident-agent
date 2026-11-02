@@ -1,6 +1,6 @@
 # 评测与交付方案
 
-状态：目标方案，尚无 Agent 实测成绩。更新：2026-10-28。商城基线与已存在实验见[接入基线](../integration/goframeshop-baseline.md)。
+状态：目标方案。首轮实测未达门槛，见[结果报告](../reports/0012-fixed-fault-evaluation.md)。更新：2026-11-02。商城基线与已存在实验见[接入基线](../integration/goframeshop-baseline.md)。
 
 ## 1. 三类验证不能混用
 
