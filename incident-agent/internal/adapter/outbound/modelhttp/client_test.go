@@ -50,6 +50,9 @@ func TestProfiles(t *testing.T) {
 	if raw["max_tokens"] != float64(512) {
 		t.Fatalf("output limit not sent as max_tokens: %v", raw)
 	}
+	if value, found := raw["temperature"]; !found || value != float64(0) {
+		t.Fatalf("temperature not fixed: %v", raw)
+	}
 	if mode, _ := raw["thinking"].(map[string]any); mode["type"] != "disabled" {
 		t.Fatalf("thinking not disabled: %v", raw)
 	}

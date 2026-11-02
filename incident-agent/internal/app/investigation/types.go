@@ -10,7 +10,7 @@ import (
 )
 
 // PolicyVersion identifies the Harness guard and execution policy.
-const PolicyVersion = "harness-v3"
+const PolicyVersion = "harness-v4"
 
 // MaxEvidenceBytes bounds saved evidence and derived log summaries.
 const MaxEvidenceBytes = 2 << 20
@@ -49,6 +49,8 @@ type View struct {
 	Step        int                `json:"step"`
 	Evidence    []telemetry.Result `json:"evidence"`
 	Feedback    string             `json:"feedback"`
+	// TokensLeft is set by the model decider for its own context; it is not run state.
+	TokensLeft int `json:"-"`
 }
 
 // Decision permits exactly one query or report, never arbitrary commands or URLs.
@@ -102,6 +104,8 @@ type Step struct {
 	Number  int    `json:"number"`
 	Phase   string `json:"phase"`
 	Outcome string `json:"outcome"`
+	// Detail is a fixed reason code for a rejection, never model output.
+	Detail  string `json:"detail,omitempty"`
 	QueryID string `json:"query_id,omitempty"`
 }
 

@@ -13,7 +13,10 @@ import (
 const ModelTokenLimit = 24000
 
 // ReportTokenReserve protects the final synthesis allowance.
-const ReportTokenReserve = 6000
+const ReportTokenReserve = 9000
+
+// minInvestigationTokens is the smallest allowance worth spending on another query choice.
+const minInvestigationTokens = 4000
 
 // MaxOutputTokens caps a single completion request.
 const MaxOutputTokens = 1500
@@ -134,6 +137,11 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		}
 		return nil, ErrModelBudget
 	}
+	// Too little left to show useful evidence: another query would be chosen nearly blind.
+	if view.Phase != "SYNTHESIZING" && available < minInvestigationTokens {
+		return nil, ErrSynthesisRequired
+	}
+	view.TokensLeft = ModelTokenLimit - m.charged
 	inputLimit := min(available-output, m.window*3/5-output)
 	prompt, omittedRecords, omittedQueries, err := buildModelInput(view, inputLimit)
 	if err != nil {
@@ -143,7 +151,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		return nil, err
 	}
 	reserved := estimateInput(prompt) + output
-	call := ModelCall{Estimator: "utf8-bytes-plus-256-v1", ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
+	call := ModelCall{Estimator: "utf8-half-bytes-plus-256-v2", ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
 		ContextDigest: telemetry.Hash(append([]byte(modelInstructions), prompt...)), Reserved: reserved,
 		Charged: reserved, Estimated: true, Status: "UNKNOWN", OmittedRecords: omittedRecords, OmittedQueries: omittedQueries}
 	if m.reserve != nil {
@@ -184,7 +192,40 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		m.calls[index].Status = "OUTPUT_TOO_LARGE"
 		return nil, ErrModelProvider
 	}
-	return append(json.RawMessage{}, response.Decision...), nil
+	return expandCitations(unwrappedReport(response.Decision), view.Evidence), nil
+}
+
+// unwrappedReport restores the envelope when a model omits kind, which DeepSeek does
+// routinely: a report's fields at the top level, or a report under "type" instead of
+// "kind". Only the envelope changes: the content still faces strict decoding and the
+// report guard, so nothing invalid gets through.
+func unwrappedReport(decision json.RawMessage) json.RawMessage {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(decision, &fields) != nil {
+		return decision
+	}
+	_, hasKind := fields["kind"]
+	_, hasResult := fields["result"]
+	nested, hasReport := fields["report"]
+	if hasKind || (!hasResult && !hasReport) {
+		return decision
+	}
+	delete(fields, "type")
+	report := nested
+	if !hasReport {
+		encoded, err := json.Marshal(fields)
+		if err != nil {
+			return decision
+		}
+		report = encoded
+	} else if len(fields) != 1 {
+		return decision
+	}
+	wrapped, err := json.Marshal(map[string]any{"kind": "report", "report": report})
+	if err != nil {
+		return decision
+	}
+	return wrapped
 }
 
 // ModelAudit returns detached usage metadata for the final Run artifact.

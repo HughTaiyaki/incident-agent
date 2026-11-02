@@ -1,5 +1,11 @@
 # 文档维护记录
 
+## 2026-11-02 · 调查质量修复
+
+- 修复重复查询、空报告和上下文不足，同窗口带引用的事实从 0–3 条升到 5–6 条，详见[改动报告](reports/0009-online-investigation.md#调查质量修复)。结果仍是 INCONCLUSIVE，诊断效果未评测。
+- 决定：已成功的相同查询由 Harness 直接拒绝；报告最多修正两次；模型漏掉外层 `kind` 时只补外层，内容校验不放宽。
+- 决定：报告预留升到 9,000，估算改为字节数的一半，Harness 策略版本升到 `harness-v4`。总用量没有大幅下降，因费用很低，暂不继续压缩。
+
 ## 2026-11-02 · 部署与运维
 
 - [任务 0011](../tasks/0011-deployment-operations.md)：镜像、Compose、`/metrics`、告警规则、部署指南和值班手册；发布检查增加密钥扫描，CI 增加整栈冒烟测试。[远端 CI](https://github.com/HughTaiyaki/incident-agent/actions/runs/41326433875) 通过，尚未在正式环境部署。

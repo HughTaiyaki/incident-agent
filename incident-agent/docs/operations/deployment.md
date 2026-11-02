@@ -46,7 +46,7 @@ docker compose -f deploy/compose.yaml --env-file deploy/.env up --build --detach
 | 项目 | 结果 | 怎么用 |
 | --- | --- | --- |
 | 单 Run 耗时（DeepSeek，Bundle 3 次，在线 2 次） | 6–17 秒，在线 10.7 秒；接管一次约 25 秒 | deadline 180 秒且 Worker 串行，按 17 秒算最多排约 10 个 |
-| 单 Run Token（DeepSeek） | Bundle 约 6,000；在线有错误日志的窗口约 18,000 | 费用预算按接近调查上限估算 |
+| 单 Run Token（DeepSeek） | 有错误日志的在线窗口约 16,600，需修正报告时约 21,500；实测约 ¥0.03/次（多为非高峰时段） | 费用预算按接近上限估算，高峰价格翻倍 |
 | `INCIDENT_MAX_ACTIVE_RUNS` | 建议从 2 开始，不超过 8 | 再多的 Run 大概率排队到 DEADLINE。慢模型要下调：单次调用可到 30 秒 |
 | 内存预留 | 256MiB 实测接受 31 个活跃 Run，2GiB 接受 255 个 | 符合 `maxmemory ÷ 8MiB`，超出返回 503 |
 | 终态 Run 内存 | 模拟模型 40 次约 12KiB/个；真实 Run 结果 8–13KiB，未直接测总占用 | 保留 7 天；单 Run 上限 7MiB |
@@ -78,6 +78,7 @@ docker compose -f deploy/compose.yaml --env-file deploy/.env up --build --detach
 - **进行中的 Run：** Worker 收到 SIGTERM 后停止新调用，Run 在 15 秒租约到期后由新 Worker 接管。deadline 不会暂停，停机过久的 Run 以 DEADLINE 结束。
 - **模型或后端配置变更：** 配置冻结在每个 Run 里，旧 Run 被新 Worker 跳过（`IncidentRunBlocked` 告警），到 deadline 后自动收尾，最多 180 秒。想避免告警，先等活跃 Run 清零再变更。
 - **回滚：** 检出上一个提交重新执行上面的命令。状态 schema 只增不改时可直接回滚；发布说明标注 schema 变化的版本不能直接回滚，因为旧版本遇到未知 schema 会跳过这些 Run。
+- **Harness 策略版本变化：** 进行中 Run 的 checkpoint 无法恢复，同样会被跳过并告警，到 deadline 后收尾。
 - **回滚前先备份**，见[值班手册](runbook.md#备份与恢复)。
 
 ## 6. 未覆盖

@@ -138,7 +138,16 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		if err == nil && decision.Kind == "report" && len(run.Evidence) == 0 && phase != "SYNTHESIZING" {
 			err = ErrInvalidDecision
 		}
-		if err != nil {
+		if err != nil && phase == "SYNTHESIZING" {
+			// One malformed answer must not discard the evidence: repair like an invalid report.
+			reportRejections++
+			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
+			run.Steps = append(run.Steps, audit)
+			if reportRejections >= maxReportRejections || step == 12 {
+				return finish(fallback(), "REPORT_INVALID")
+			}
+			continue
+		} else if err != nil {
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
 			noProgress++
 		} else if decision.Kind == "report" {
@@ -148,17 +157,25 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 				return finish(*decision.Report, stopReason)
 			}
 			reportRejections++
-			audit.Outcome, feedback = "REPORT_REJECTED", "REPORT_REJECTED"
+			audit.Outcome, feedback = reportRejected, reportRejected
+			var rejection reportRejection
+			if errors.As(err, &rejection) {
+				audit.Detail, feedback = rejection.reason, reportRejected+":"+rejection.reason
+			}
 			run.Steps = append(run.Steps, audit)
-			if reportRejections >= 2 || step == 12 {
+			if reportRejections >= maxReportRejections || step == 12 {
 				return finish(fallback(), "REPORT_INVALID")
 			}
 			phase, stopReason = "SYNTHESIZING", "REPORT_REPAIRED"
 			continue
 		} else if phase == "SYNTHESIZING" {
-			audit.Outcome = "QUERY_NOT_ALLOWED"
+			reportRejections++
+			audit.Outcome, feedback = "QUERY_NOT_ALLOWED", "QUERY_NOT_ALLOWED"
 			run.Steps = append(run.Steps, audit)
-			return finish(fallback(), stopReason)
+			if reportRejections >= maxReportRejections || step == 12 {
+				return finish(fallback(), stopReason)
+			}
+			continue
 		} else {
 			q, queryErr := policy.Normalize(*decision.Query)
 			within := !q.Start.Before(request.Start) && !q.End.After(request.End)
@@ -167,6 +184,10 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			switch {
 			case queryErr != nil || !within:
 				audit.Outcome = "QUERY_REJECTED"
+				noProgress++
+			case succeededBefore(run.Evidence, q):
+				// The answer is already frozen; asking again only spends budget.
+				audit.Outcome = "QUERY_REPEATED"
 				noProgress++
 			case repeated[key] >= 2:
 				audit.Outcome = "QUERY_REPEAT_LIMIT"
@@ -259,6 +280,23 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		}
 	}
 	return finish(fallback(), "DECISION_LIMIT")
+}
+
+// maxReportRejections leaves two chances to repair a report. Real models get report
+// shape wrong often enough that one failure should not cost the whole investigation.
+const maxReportRejections = 3
+
+func succeededBefore(evidence []telemetry.Result, q telemetry.Query) bool {
+	want, _ := json.Marshal(q)
+	for _, entry := range evidence {
+		if entry.Quality.QueryOutcome != "SUCCEEDED" {
+			continue
+		}
+		if got, _ := json.Marshal(entry.Query); string(got) == string(want) {
+			return true
+		}
+	}
+	return false
 }
 
 func validResult(result telemetry.Result, q telemetry.Query, policy telemetry.Policy) bool {

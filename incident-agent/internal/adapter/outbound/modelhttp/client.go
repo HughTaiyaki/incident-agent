@@ -101,9 +101,10 @@ type completionBody struct {
 	ResponseFormat      struct {
 		Type string `json:"type"`
 	} `json:"response_format"`
-	Stream   bool      `json:"stream"`
-	Store    *bool     `json:"store,omitempty"`
-	Thinking *thinking `json:"thinking,omitempty"`
+	Stream      bool      `json:"stream"`
+	Store       *bool     `json:"store,omitempty"`
+	Thinking    *thinking `json:"thinking,omitempty"`
+	Temperature *float64  `json:"temperature,omitempty"`
 }
 
 type thinking struct {
@@ -118,6 +119,9 @@ func (c *Client) requestBody(input investigation.CompletionRequest) completionBo
 	if c.profile == ProfileDeepSeek {
 		body.MaxTokens = input.MaxOutputTokens
 		body.Thinking = &thinking{Type: "disabled"}
+		// Same evidence should lead to the same investigation as far as the provider allows.
+		temperature := 0.0
+		body.Temperature = &temperature
 		return body
 	}
 	store := false

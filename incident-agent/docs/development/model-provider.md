@@ -33,7 +33,7 @@
 
 当前采用 [Chat Completions API](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) 的非流式 JSON 子集：发送两条 system/user 消息、`max_completion_tokens`、`response_format.type=json_object`、`stream=false`、`store=false`；读取单条 choices、finish_reason 与 usage。JSON 模式仍需由本地 Guard 校验业务 schema，参考[结构化输出说明](https://developers.openai.com/api/docs/guides/structured-outputs)。
 
-**DeepSeek 配置（2026-11-02 实测）：** 端点 `https://api.deepseek.com/chat/completions`，`INCIDENT_MODEL_API_PROFILE=deepseek`，模型名和窗口以其 `/models` 接口为准（实测时 `deepseek-flash`、1048576）。必须用这个配置：DeepSeek 忽略 `max_completion_tokens`，实测设 30 仍返回 425 个输出 Token，只有 `max_tokens` 生效；`max_tokens` 又把思考内容计入，所以该配置同时关闭思考，并省略文档未列出的 `store`。
+**DeepSeek 配置（2026-11-02 实测）：** 端点 `https://api.deepseek.com/chat/completions`，`INCIDENT_MODEL_API_PROFILE=deepseek`，模型名和窗口以其 `/models` 接口为准（实测时 `deepseek-flash`、1048576）。必须用这个配置：DeepSeek 忽略 `max_completion_tokens`，实测设 30 仍返回 425 个输出 Token，只有 `max_tokens` 生效；`max_tokens` 又把思考内容计入，所以该配置同时关闭思考，并省略文档未列出的 `store`；它还固定 `temperature=0`，实测同样输入的运行明显更一致，但仍不完全相同。
 
 只接受 `finish_reason=stop`，拒绝工具调用、拒答、截断和异常响应形状。不能据此宣称任意“兼容 OpenAI”的网关或模型都已兼容；支持不同参数、Responses API 或其他供应商需要独立 Adapter 与联调。即使请求包含 store=false，也不能将其解读为供应商的完整数据保留承诺。
 
@@ -45,26 +45,26 @@
 
 ## 3. 上下文怎样选择
 
-固定系统规则与不可信数据分成两条消息。被拒绝后，反馈是按结果代码选择的固定改正说明，不回显模型输出。数据包含冻结 Request、阶段、有限反馈、最近最多三个查询的来源质量，以及最多 24 条完整规范化记录。长摘要保留前 128 字符并标记截断；旧查询与未选记录明确计入 omitted_queries/omitted_records。
+固定系统规则与不可信数据分成两条消息。被拒绝后，反馈是按结果代码选择的固定改正说明，不回显模型输出。数据包含冻结 Request、阶段、固定的改正说明、剩余决策数和 Token、已执行查询清单（范围、指标、状态和记录数，最近三个带来源质量）、日志聚合的计数（最多 8 组，错误优先），以及规范化记录（调查阶段最多 8 条，汇总阶段最多 24 条）。长摘要保留前 128 字符并标记截断；放不下的查询、聚合和记录分别计入 omitted_queries/omitted_patterns/omitted_records。
 
-先保留范围和省略标记，再按可用字节预算装入来源质量。若预算仍不足，省略较旧查询摘要并增加计数；必要基础内容都装不下时，不发起调用，输出 MODEL_CONTEXT_LIMIT。模型不能把未显示的信息当成不存在。
+先保留范围和省略标记，再装入查询清单。若预算仍不足，省略较旧查询并增加计数；聚合最多占剩余空间的三分之一，其余留给可引用的记录；必要基础内容都装不下时，不发起调用，输出 MODEL_CONTEXT_LIMIT。上下文窗口低于约 16K 时可能放不下记录。模型不能把未显示的信息当成不存在。
 
-从剩余查询轮流选择记录，避免单个指标大结果挤掉全部其他来源；日志先考虑已生成聚合的代表记录。只传入规范化结构记录，不传 canonical_query、原始日志正文、实验报告或整个 Bundle。摘要选择是启发式，不保证保留全部反例，不能宣传为无损压缩。
+调查阶段从最近三个查询、汇总阶段从全部查询轮流选择记录，避免单个指标大结果挤掉全部其他来源；日志先考虑已生成聚合的代表记录，指标先取每条序列的首尾和极值点，否则窗口后段的峰值会被记录上限挡掉。发送时去掉采集时间和环境，指标值保留四位有效数字，记录 ID 缩短为 12 位，收到回复后再还原；前缀冲突时不还原，由报告校验拒绝。只传入规范化结构记录，不传 canonical_query、原始日志正文、实验报告或整个 Bundle。摘要选择是启发式，不保证保留全部反例，不能宣传为无损压缩。
 
 发送前，记录中的业务 ID（order_id、operation_id、event_id、order.no、payment.id、messaging.message.id）换成按 Run 加盐的假名，同一 Run 内仍可关联；Trace/Span ID 保留以便继续查询。这是假名化，不是匿名化。
 
-模型只得到有界数据，不得到 Shell/SQL/URL 工具。返回决策继续经过既有查询 Guard 和 Report Guard；提示词不能替代代码权限控制，引用存在也不证明语义成立。
+模型只得到有界数据，不得到 Shell/SQL/URL 工具。模型漏掉外层 `kind` 时（DeepSeek 常见），只补外层，内容仍走严格解码和报告校验。返回决策继续经过既有查询 Guard 和 Report Guard；提示词不能替代代码权限控制，引用存在也不证明语义成立。
 
 ## 4. Token 预留与审计
 
 | 项目 | 行为 |
 | --- | --- |
 | Run 总额度 | 24,000，输入＋输出一起核算 |
-| 调查阶段 | 可用额度扣除 6,000 报告预留；不能消耗报告预留 |
+| 调查阶段 | 可用额度扣除 9,000 报告预留；不能消耗报告预留；可用额度不足 4,000 时直接进入汇总，不再让模型近乎盲选查询 |
 | 汇总阶段 | 可用全部剩余额度，至少有报告预留；预留是下限，不是上限 |
 | 单次输出 | 最多 1,500，临近额度时缩小 |
 | 输入上限 | 本次可用额度与模型窗口 60% 中较小值，再扣输出上限 |
-| 输入估算 | UTF-8 字节数＋固定规则长度＋256 开销，版本 utf8-bytes-plus-256-v1 |
+| 输入估算 | （UTF-8 字节数＋固定规则长度）的一半＋256 开销，版本 utf8-half-bytes-plus-256-v2。DeepSeek 实测输入约为字节数的 1/3，所以仍有余量 |
 | 发起调用 | 先在内存中记录调用并扣预留，再请求 Provider |
 | 完整、合法 usage | 按 prompt_tokens＋completion_tokens 核算，退回剩余预留 |
 | 失败、超时、缺失 usage | 全额消耗预留，标 estimated/UNKNOWN 或 RECEIVED；未知用量不退回 |

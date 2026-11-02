@@ -79,22 +79,40 @@ func decodeDecision(raw []byte) (Decision, error) {
 	return Decision{}, ErrInvalidDecision
 }
 
+// reportRejected is the outcome code for a decoded report that failed validation.
+const reportRejected = "REPORT_REJECTED"
+
+// reportRejection is a rejection with a fixed reason the model can act on.
+type reportRejection struct{ reason string }
+
+func (r reportRejection) Error() string { return ErrInvalidDecision.Error() + ": " + r.reason }
+
+// Is keeps every rejection recognizable as an invalid decision.
+func (reportRejection) Is(target error) bool { return target == ErrInvalidDecision }
+
+var (
+	errReportResult   = reportRejection{"RESULT"}
+	errReportCitation = reportRejection{"CITATION"}
+	errReportTimeline = reportRejection{"TIMELINE"}
+	errReportText     = reportRejection{"TEXT"}
+)
+
 // ValidateReport verifies structural grounding, not whether evidence semantically proves a claim.
 // Recovery comparison is intentionally unavailable in this offline slice.
 func ValidateReport(d Draft, evidence []telemetry.Result) error {
 	data, err := json.Marshal(d)
 	if err != nil || len(data) > MaxDecisionBytes {
-		return ErrInvalidDecision
+		return errReportResult
 	}
 	if (d.Result != "DIAGNOSED" && d.Result != "INCONCLUSIVE") || d.Recovery != "UNKNOWN" ||
 		len(d.Facts) > 20 || len(d.Timeline) > 20 || len(d.Alternatives) > 3 || len(d.Unknowns) > 20 || len(d.NextActions) > 10 {
-		return ErrInvalidDecision
+		return errReportResult
 	}
 	if d.Result == "DIAGNOSED" && (d.Primary == nil || len(d.Facts) == 0) {
-		return ErrInvalidDecision
+		return errReportResult
 	}
 	if d.Result == "INCONCLUSIVE" && len(d.Unknowns) == 0 {
-		return ErrInvalidDecision
+		return errReportResult
 	}
 	records := map[string]telemetry.Record{}
 	for _, entry := range evidence {
@@ -135,33 +153,33 @@ func ValidateReport(d Draft, evidence []telemetry.Result) error {
 	}
 	for _, fact := range d.Facts {
 		if !claimValid(fact) {
-			return ErrInvalidDecision
+			return errReportCitation
 		}
 	}
 	for i, item := range d.Timeline {
 		if !claimValid(item.Claim) || item.At.IsZero() || (i > 0 && item.At.Before(d.Timeline[i-1].At)) {
-			return ErrInvalidDecision
+			return errReportTimeline
 		}
 		matches := false
 		for _, id := range item.Claim.EvidenceIDs {
 			matches = matches || item.At.Equal(records[id].At)
 		}
 		if !matches {
-			return ErrInvalidDecision
+			return errReportTimeline
 		}
 	}
 	if d.Primary != nil && !hypothesisValid(*d.Primary) {
-		return ErrInvalidDecision
+		return errReportCitation
 	}
 	for _, h := range d.Alternatives {
 		if !hypothesisValid(h) {
-			return ErrInvalidDecision
+			return errReportCitation
 		}
 	}
 	for _, values := range [][]string{d.Unknowns, d.NextActions} {
 		for _, value := range values {
 			if !safeText(value, 2000) {
-				return ErrInvalidDecision
+				return errReportText
 			}
 		}
 	}

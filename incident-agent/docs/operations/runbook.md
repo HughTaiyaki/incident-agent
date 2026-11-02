@@ -56,6 +56,7 @@ Worker 串行，Run 从提交起就消耗 180 秒。`/metrics` 的 `incident_run
 | 原因 | 处理 |
 | --- | --- |
 | `worker configuration does not match frozen job` | 配置变更造成，到 deadline 自动收尾，一般不用处理。若持续出现，检查 API 和 Worker 是否用了同一份 `deploy/.env` |
+| `investigation` 输入无效（常见于升级后 Harness 版本不同） | 到 deadline 自动收尾，一般不用处理 |
 | `claim CORRUPT`、`claim UNKNOWN_SCHEMA`、`unreadable job/checkpoint` | 不会自动收尾，按下面处理 |
 
 人工处理（**会丢弃该 Run，先备份**）：

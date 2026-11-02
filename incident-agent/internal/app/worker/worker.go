@@ -243,6 +243,9 @@ func (w *Worker) Process(ctx context.Context, id string) error {
 			reason = "CANCELLED"
 		}
 		result = investigation.Stopped(cp.Run, reason)
+	} else if errors.Is(runErr, investigation.ErrInvalidInput) {
+		// Such as a checkpoint from another harness version: this run cannot resume, others can.
+		return fmt.Errorf("%w: run %s: %w", ErrRunBlocked, id, runErr)
 	} else if runErr != nil {
 		return runErr
 	} else if result.Status == "CANCELLED" {

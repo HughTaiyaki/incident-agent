@@ -192,3 +192,28 @@ func TestSynthesisUsesRemainingBudget(t *testing.T) {
 		t.Fatalf("output=%d records=%d omitted=%d", got.MaxOutputTokens, len(input.Records), input.OmittedRecords)
 	}
 }
+
+func TestUnwrappedReportOnlyAddsEnvelope(t *testing.T) {
+	flat := `{"type":"json_object","result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["x"],"next_actions":[],"recovery_assessment":"UNKNOWN"}`
+	decision, err := decodeDecision(unwrappedReport(json.RawMessage(flat)))
+	if err != nil || decision.Kind != "report" || decision.Report.Unknowns[0] != "x" {
+		t.Fatalf("%+v %v", decision, err)
+	}
+	nested := `{"type":"report","report":{"result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["y"],"next_actions":[],"recovery_assessment":"UNKNOWN"}}`
+	if decision, err := decodeDecision(unwrappedReport(json.RawMessage(nested))); err != nil || decision.Report.Unknowns[0] != "y" {
+		t.Fatalf("%+v %v", decision, err)
+	}
+	// A report beside anything unexpected is left alone for strict decoding to refuse.
+	if _, err := decodeDecision(unwrappedReport(json.RawMessage(`{"report":{"result":"INCONCLUSIVE"},"shell":"rm"}`))); err == nil {
+		t.Fatal("extra field accepted")
+	}
+	// Anything else in the fields still fails strict decoding.
+	if _, err := decodeDecision(unwrappedReport(json.RawMessage(`{"result":"DIAGNOSED","shell":"rm"}`))); err == nil {
+		t.Fatal("unknown field accepted")
+	}
+	for _, unchanged := range []string{`{"kind":"query","query":{}}`, `{"facts":[]}`, `not json`, `[1]`} {
+		if got := unwrappedReport(json.RawMessage(unchanged)); string(got) != unchanged {
+			t.Fatalf("%s became %s", unchanged, got)
+		}
+	}
+}
