@@ -35,6 +35,8 @@
 
 **DeepSeek 配置（2026-11-02 实测）：** 端点 `https://api.deepseek.com/chat/completions`，`INCIDENT_MODEL_API_PROFILE=deepseek`，模型名和窗口以其 `/models` 接口为准（实测时 `deepseek-flash`、1048576）。必须用这个配置：DeepSeek 忽略 `max_completion_tokens`，实测设 30 仍返回 425 个输出 Token，只有 `max_tokens` 生效；`max_tokens` 又把思考内容计入，所以该配置同时关闭思考，并省略文档未列出的 `store`；它还固定 `temperature=0`，实测同样输入的运行明显更一致，但仍不完全相同。
 
+`deepseek-thinking` 配置保留思考，只有 `incident-eval -thinking` 能用，部署的 API 和 Worker 会拒绝，因为思考需要更长的时限和更大的输出上限。实测还不可用，见[评测报告](../reports/0012-fixed-fault-evaluation.md#模型对比开发集)。
+
 只接受 `finish_reason=stop`，拒绝工具调用、拒答、截断和异常响应形状。不能据此宣称任意“兼容 OpenAI”的网关或模型都已兼容；支持不同参数、Responses API 或其他供应商需要独立 Adapter 与联调。即使请求包含 store=false，也不能将其解读为供应商的完整数据保留承诺。
 
 - 固定配置 URL，模型和来源文本不能改变它；不接收 URL 凭据、查询串或 fragment。

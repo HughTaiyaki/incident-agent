@@ -62,6 +62,40 @@ func TestProfiles(t *testing.T) {
 		}
 	}
 }
+func TestThinkingProfileKeepsThinkingAndLimitsOutput(t *testing.T) {
+	var raw map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			t.Error(err)
+		}
+		_, _ = fmt.Fprint(w, `{"choices":[{"finish_reason":"stop","message":{"content":"{}","reasoning_content":"private"}}],"usage":{"prompt_tokens":1,"completion_tokens":1}}`)
+	}))
+	defer server.Close()
+	client, err := New(Config{Endpoint: server.URL + "/chat", Model: "m", Profile: ProfileDeepSeekThinking})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	input := testInput()
+	input.MaxOutputTokens = investigation.MaxConfigurableOutputTokens
+	response, err := client.Complete(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode, _ := raw["thinking"].(map[string]any); mode["type"] != "enabled" || raw["max_tokens"] != float64(investigation.MaxConfigurableOutputTokens) {
+		t.Fatalf("%v", raw)
+	}
+	if _, found := raw["temperature"]; found {
+		t.Fatal("temperature sent with thinking on")
+	}
+	if strings.Contains(string(response.Decision), "private") {
+		t.Fatal("reasoning kept")
+	}
+	input.MaxOutputTokens = investigation.MaxConfigurableOutputTokens + 1
+	if _, err := client.Complete(context.Background(), input); err == nil {
+		t.Fatal("output limit not enforced")
+	}
+}
 func TestComplete(t *testing.T) {
 	t.Run("bounded request and usage", func(t *testing.T) {
 		calls := 0

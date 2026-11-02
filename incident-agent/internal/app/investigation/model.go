@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
@@ -20,6 +21,9 @@ const minInvestigationTokens = 4000
 
 // MaxOutputTokens caps a single completion request.
 const MaxOutputTokens = 1500
+
+// MaxConfigurableOutputTokens bounds what ModelTuning may raise the output limit to.
+const MaxConfigurableOutputTokens = 8000
 
 // ErrSynthesisRequired transitions investigation into the reserved report phase.
 var ErrSynthesisRequired = errors.New("model investigation budget exhausted")
@@ -86,6 +90,7 @@ type ModelDecider struct {
 	started   bool
 	charged   int
 	calls     []ModelCall
+	tuning    ModelTuning
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -94,6 +99,46 @@ func NewModelDecider(provider Provider, model string, contextWindow int) (*Model
 		return nil, ErrInvalidInput
 	}
 	return &ModelDecider{provider: provider, model: model, window: contextWindow, calls: []ModelCall{}}, nil
+}
+
+// ModelTuning relaxes limits for a slow model that thinks before answering. Only evaluation
+// sets it: the token budget, and every check on what the model returns, stay the same.
+type ModelTuning struct {
+	MaxOutput       int
+	DecisionTimeout time.Duration
+	RunTimeout      time.Duration
+}
+
+// Tune applies t. A value outside the allowed range is an error, so a typo cannot go unnoticed.
+func (m *ModelDecider) Tune(t ModelTuning) error {
+	if t.MaxOutput < 1 || t.MaxOutput > MaxConfigurableOutputTokens || t.DecisionTimeout <= 0 || t.RunTimeout < t.DecisionTimeout {
+		return ErrInvalidInput
+	}
+	m.tuning = t
+	return nil
+}
+
+func (m *ModelDecider) outputLimit() int {
+	if m.tuning.MaxOutput > 0 {
+		return m.tuning.MaxOutput
+	}
+	return MaxOutputTokens
+}
+
+// DecisionTimeout is how long the harness waits for one decision.
+func (m *ModelDecider) DecisionTimeout() time.Duration {
+	if m.tuning.DecisionTimeout > 0 {
+		return m.tuning.DecisionTimeout
+	}
+	return defaultDecisionTimeout
+}
+
+// RunTimeout is the run's overall limit.
+func (m *ModelDecider) RunTimeout() time.Duration {
+	if m.tuning.RunTimeout > 0 {
+		return m.tuning.RunTimeout
+	}
+	return defaultRunTimeout
 }
 
 // BeginRun prevents budgets or previous evidence state from being accidentally shared across runs.
@@ -133,7 +178,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		}
 		return nil, ErrModelBudget
 	}
-	output := min(MaxOutputTokens, available/3)
+	output := min(m.outputLimit(), available/3)
 	if output < 256 {
 		if view.Phase != "SYNTHESIZING" {
 			return nil, ErrSynthesisRequired

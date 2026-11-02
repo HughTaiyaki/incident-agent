@@ -13,6 +13,11 @@ import (
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
+const (
+	defaultRunTimeout      = 180 * time.Second
+	defaultDecisionTimeout = 30 * time.Second
+)
+
 // Execute runs sequentially with fixed limits. There is no persistence, retry of decisions or resume.
 // Decider and Querier must honor context; uncooperative implementations are not forcibly terminated.
 func Execute(ctx context.Context, request Request, decider Decider, querier Querier) (Run, error) {
@@ -25,7 +30,11 @@ func Execute(ctx context.Context, request Request, decider Decider, querier Quer
 		return Run{}, errors.New("cannot allocate run identity")
 	}
 	now := time.Now().UTC()
-	ctx, cancel := context.WithTimeout(ctx, 180*time.Second)
+	runTimeout := defaultRunTimeout
+	if tuned, ok := decider.(interface{ RunTimeout() time.Duration }); ok {
+		runTimeout = tuned.RunTimeout()
+	}
+	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 	deadline, _ := ctx.Deadline()
 	run := Run{ID: hex.EncodeToString(id), Request: request, Status: "RUNNING", CreatedAt: now, DeadlineAt: deadline,
@@ -107,7 +116,11 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			return Run{}, errors.New("cannot copy decision view")
 		}
 		run.Decisions++ // Invalid, timed out and failed decisions consume a slot.
-		decisionCtx, stop := context.WithTimeout(ctx, 30*time.Second)
+		decisionTimeout := defaultDecisionTimeout
+		if tuned, ok := decider.(interface{ DecisionTimeout() time.Duration }); ok {
+			decisionTimeout = tuned.DecisionTimeout()
+		}
+		decisionCtx, stop := context.WithTimeout(ctx, decisionTimeout)
 		raw, decideErr := decider.Decide(decisionCtx, view)
 		callErr := decisionCtx.Err()
 		stop()

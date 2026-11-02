@@ -116,6 +116,9 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if profile == modelhttp.ProfileDeepSeekThinking {
+		return nil, nil, errors.New("deepseek-thinking is for evaluation: its limits are not available here")
+	}
 	prometheus, loki, jaeger := getenv("INCIDENT_PROMETHEUS_URL"), getenv("INCIDENT_LOKI_URL"), getenv("INCIDENT_JAEGER_URL")
 	if prometheus == "" || loki == "" || jaeger == "" {
 		return nil, nil, errors.New("explicit INCIDENT_PROMETHEUS_URL, INCIDENT_LOKI_URL and INCIDENT_JAEGER_URL required")

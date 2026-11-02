@@ -26,6 +26,9 @@ var modelName = regexp.MustCompile(`^[a-zA-Z0-9_./:-]{1,128}$`)
 const (
 	ProfileOpenAI   = "openai"
 	ProfileDeepSeek = "deepseek"
+	// ProfileDeepSeekThinking keeps thinking on. Thinking counts against max_tokens and takes
+	// minutes, so it needs larger limits than a deployment has; only evaluation sets them.
+	ProfileDeepSeekThinking = "deepseek-thinking"
 )
 
 // ParseProfile normalizes the operator's choice; empty selects the original request shape.
@@ -33,8 +36,8 @@ func ParseProfile(value string) (string, error) {
 	switch value {
 	case "", ProfileOpenAI:
 		return ProfileOpenAI, nil
-	case ProfileDeepSeek:
-		return ProfileDeepSeek, nil
+	case ProfileDeepSeek, ProfileDeepSeekThinking:
+		return value, nil
 	}
 	return "", errors.New("unknown model API profile")
 }
@@ -45,6 +48,8 @@ type Config struct {
 	APIKey   string
 	Model    string
 	Profile  string
+	// Timeout overrides the single-request limit; zero keeps the 30-second default.
+	Timeout time.Duration
 }
 
 // Client sends bounded completions to one operator-configured endpoint.
@@ -78,10 +83,14 @@ func New(config Config) (*Client, error) {
 	if config.APIKey == "" && !loopback {
 		return nil, errors.New("model API key is required")
 	}
+	timeout := config.Timeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
 	transport := &http.Transport{Proxy: nil, DialContext: (&net.Dialer{Timeout: 5 * time.Second}).DialContext,
-		TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 30 * time.Second, MaxConnsPerHost: 1,
+		TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: timeout, MaxConnsPerHost: 1,
 		MaxIdleConns: 1, IdleConnTimeout: 30 * time.Second, ForceAttemptHTTP2: true}
-	client := &http.Client{Transport: transport, Timeout: 30 * time.Second,
+	client := &http.Client{Transport: transport, Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	return &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport}, nil
 }
@@ -116,6 +125,11 @@ type thinking struct {
 func (c *Client) requestBody(input investigation.CompletionRequest) completionBody {
 	body := completionBody{Model: c.model, Messages: []message{{Role: "system", Content: input.Instructions}, {Role: "user", Content: string(input.Input)}}}
 	body.ResponseFormat.Type = "json_object"
+	if c.profile == ProfileDeepSeekThinking {
+		body.MaxTokens = input.MaxOutputTokens
+		body.Thinking = &thinking{Type: "enabled"}
+		return body
+	}
 	if c.profile == ProfileDeepSeek {
 		body.MaxTokens = input.MaxOutputTokens
 		body.Thinking = &thinking{Type: "disabled"}
@@ -150,7 +164,7 @@ func (c *Client) Complete(ctx context.Context, input investigation.CompletionReq
 	if err := ctx.Err(); err != nil {
 		return investigation.CompletionResponse{}, err
 	}
-	if input.MaxOutputTokens < 1 || input.MaxOutputTokens > investigation.MaxOutputTokens ||
+	if input.MaxOutputTokens < 1 || input.MaxOutputTokens > investigation.MaxConfigurableOutputTokens ||
 		len(input.Instructions)+len(input.Input) > 64000 || !json.Valid(input.Input) {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}

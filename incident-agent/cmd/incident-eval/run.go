@@ -32,6 +32,9 @@ const (
 	captureTimeout  = 5 * time.Minute
 )
 
+// thinkingTuning leaves room for reasoning in the output and for the minutes it takes.
+var thinkingTuning = investigation.ModelTuning{MaxOutput: 6000, DecisionTimeout: 150 * time.Second, RunTimeout: 15 * time.Minute}
+
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		_, _ = fmt.Fprintln(stderr, "usage: incident-eval capture|derive|investigate|sheet [flags]")
@@ -47,6 +50,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	environment := flags.String("environment", "experiment", "capture: telemetry environment")
 	upstream := flags.String("upstream-sha", "unknown", "capture: verified upstream revision")
 	attempts := flags.Int("attempts", 3, "investigate: repeated investigations of this sample")
+	thinking := flags.Bool("thinking", false, "investigate: keep model thinking on, with the longer limits it needs")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -64,7 +68,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "derive":
 		err = deriveSample(*from, *dir, strings.Split(*drop, ","), stdout)
 	case "investigate":
-		err = investigate(ctx, *dir, *attempts, stdout)
+		err = investigate(ctx, *dir, *attempts, *thinking, stdout)
 	case "sheet":
 		err = sheet(*dir, stdout)
 	default:
@@ -225,7 +229,7 @@ func deriveSample(from, dir string, drop []string, stdout io.Writer) error {
 	return json.NewEncoder(stdout).Encode(manifest)
 }
 
-func investigate(ctx context.Context, dir string, attempts int, stdout io.Writer) error {
+func investigate(ctx context.Context, dir string, attempts int, thinking bool, stdout io.Writer) error {
 	if attempts < 1 || attempts > 20 {
 		return errors.New("attempts must be between 1 and 20")
 	}
@@ -250,7 +254,11 @@ func investigate(ctx context.Context, dir string, attempts int, stdout io.Writer
 	if err != nil {
 		return err
 	}
-	client, err := modelhttp.New(modelhttp.Config{Endpoint: os.Getenv("INCIDENT_MODEL_ENDPOINT"), APIKey: apiKey, Model: model, Profile: os.Getenv("INCIDENT_MODEL_API_PROFILE")})
+	config := modelhttp.Config{Endpoint: os.Getenv("INCIDENT_MODEL_ENDPOINT"), APIKey: apiKey, Model: model, Profile: os.Getenv("INCIDENT_MODEL_API_PROFILE")}
+	if thinking {
+		config.Profile, config.Timeout = modelhttp.ProfileDeepSeekThinking, thinkingTuning.DecisionTimeout
+	}
+	client, err := modelhttp.New(config)
 	if err != nil {
 		return err
 	}
@@ -264,6 +272,11 @@ func investigate(ctx context.Context, dir string, attempts int, stdout io.Writer
 		decider, err := investigation.NewModelDecider(client, model, window)
 		if err != nil {
 			return err
+		}
+		if thinking {
+			if err = decider.Tune(thinkingTuning); err != nil {
+				return err
+			}
 		}
 		result, err := investigation.Execute(ctx, request, decider, replay)
 		if err != nil {

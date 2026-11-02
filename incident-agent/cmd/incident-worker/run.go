@@ -132,6 +132,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return fail(err)
 	}
+	if profile == modelhttp.ProfileDeepSeekThinking {
+		return fail(errors.New("deepseek-thinking is for evaluation: its limits are not available here"))
+	}
 	apiKey, err := secretenv.Lookup(os.Getenv, "INCIDENT_MODEL_API_KEY")
 	if err != nil {
 		return fail(err)

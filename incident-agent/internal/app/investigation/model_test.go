@@ -278,3 +278,40 @@ func TestLogSweepIsOffUnlessRequestedAndNotInSynthesis(t *testing.T) {
 		t.Fatal("swept twice")
 	}
 }
+
+func TestTuningChangesLimitsButNotBudgetChecks(t *testing.T) {
+	var got CompletionRequest
+	usage := ModelUsage{InputTokens: 100, OutputTokens: 100}
+	model, err := NewModelDecider(providerFunc(func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+		got = r
+		return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())}), Usage: &usage}, nil
+	}), "test-model", 1048576)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []ModelTuning{{}, {MaxOutput: MaxConfigurableOutputTokens + 1, DecisionTimeout: time.Minute, RunTimeout: time.Hour}, {MaxOutput: 6000, DecisionTimeout: time.Hour, RunTimeout: time.Minute}} {
+		if model.Tune(bad) == nil {
+			t.Fatalf("accepted %+v", bad)
+		}
+	}
+	if model.DecisionTimeout() != defaultDecisionTimeout || model.RunTimeout() != defaultRunTimeout {
+		t.Fatal("defaults changed by a refused tuning")
+	}
+	if err := model.Tune(ModelTuning{MaxOutput: 6000, DecisionTimeout: time.Minute, RunTimeout: time.Hour}); err != nil {
+		t.Fatal(err)
+	}
+	if err := model.BeginRun(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := model.Decide(t.Context(), View{Request: request(), Phase: "SYNTHESIZING"}); err != nil {
+		t.Fatal(err)
+	}
+	if got.MaxOutputTokens != 6000 {
+		t.Fatal(got.MaxOutputTokens)
+	}
+	// Going over the output actually allowed still stops the run.
+	usage = ModelUsage{InputTokens: 100, OutputTokens: 6001}
+	if _, err := model.Decide(t.Context(), View{Request: request(), Phase: "SYNTHESIZING"}); !errors.Is(err, ErrModelBudget) {
+		t.Fatal(err)
+	}
+}
