@@ -260,11 +260,19 @@ func TestLiveIdentifiersStayOutOfPrompts(t *testing.T) {
 	r := newRedis(t)
 	c := clientFor(t, r, "mask")
 	liveJob(t, c, "run1")
-	client := liveClient(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = fmt.Fprint(w, logsBody()) })
+	// An explanatory log keeps its text with the ID removed; routine text is not kept at all.
+	at := time.Date(2026, 10, 28, 6, 1, 0, 0, time.UTC).UnixNano()
+	body := fmt.Sprintf(`{"status":"success","data":{"resultType":"streams","result":[{"stream":{"service_name":"order-service","deployment_environment_name":"local"},"values":[`+
+		`["%d","order %s moved on",{"event_name":"order.transition","severity_text":"ERROR","order_id":"%s"}],`+
+		`["%d","private body",{"severity_text":"INFO"}]]}]}}`, at, realOrderID, realOrderID, at+1)
+	client := liveClient(t, func(w http.ResponseWriter, _ *http.Request) { _, _ = fmt.Fprint(w, body) })
 	p := &scriptProvider{decisions: []string{logsDecision}}
 	w := worker.Worker{Store: c, Owner: "worker", Build: factory(p, client)}
 	if err := w.Process(t.Context(), "run1"); err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(p.inputs[len(p.inputs)-1], "order [id] moved on") {
+		t.Fatalf("explanatory text lost: %.400s", p.inputs[len(p.inputs)-1])
 	}
 	if len(p.inputs) != 2 {
 		t.Fatalf("prompts=%d", len(p.inputs))

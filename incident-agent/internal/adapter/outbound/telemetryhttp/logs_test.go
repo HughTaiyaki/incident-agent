@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
@@ -79,5 +80,48 @@ func TestLogsMarksLimitWithoutInventingPagination(t *testing.T) {
 	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
 	if err != nil || len(result.Records) != 1 || !result.Quality.Truncated || result.Requests != 1 {
 		t.Fatalf("result=%+v error=%v", result, err)
+	}
+}
+
+func TestLogBodyKeptOnlyWhereItExplainsAndAfterSanitizing(t *testing.T) {
+	t.Parallel()
+	q := testQuery("logs")
+	at := q.Start.Add(time.Minute).UnixNano()
+	line := func(metadata, body string) string {
+		return fmt.Sprintf(`{"stream":{"service_name":"%s","deployment_environment_name":"%s","trace_id":"","span_id":""%s},"values":[["%d",%q]]}`, q.Service, q.Environment, metadata, at, body)
+	}
+	client := newClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":[%s,%s,%s,%s,%s]}}`,
+			line(`,"severity_text":"WARN"`, "order O2026110212560538669776: reserve outcome unknown"),
+			line(`,"severity_text":"INFO","event_name":"message.redelivered"`, "event 1fab9758-aa11-4c2d-9e10-0123456789ab already processed"),
+			line(`,"severity_text":"INFO"`, "routine text for user alice"),
+			line(`,"severity_text":"ERROR"`, "login failed password=hunter2"),
+			line(`,"severity_text":"WARN","order_id":"plain-word-id"`, "order plain-word-id: stuck"))
+	})
+	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	messages := map[string]bool{}
+	omitted := 0
+	for _, record := range result.Records {
+		if record.Fields["body_omitted"] == "true" {
+			omitted++
+		}
+		if message := record.Fields["message"]; message != "" {
+			messages[message] = true
+		}
+		if err := telemetry.ValidateRecord(record, result.Query, telemetry.DefaultPolicy()); err != nil {
+			t.Fatalf("%+v: %v", record, err)
+		}
+	}
+	if len(result.Records) != 5 || omitted != 2 || !messages["order [id]: stuck"] || !messages["order [id]: reserve outcome unknown"] || !messages["event [id] already processed"] {
+		t.Fatalf("omitted=%d %v", omitted, messages)
+	}
+	encoded, _ := json.Marshal(result)
+	for _, private := range []string{"alice", "hunter2", "O2026110212560538669776", "1fab9758", "order plain-word-id"} {
+		if strings.Contains(string(encoded), private) {
+			t.Fatalf("leaked %s", private)
+		}
 	}
 }

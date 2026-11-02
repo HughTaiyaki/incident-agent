@@ -39,13 +39,23 @@ func ValidateRecord(record Record, q Query, policy Policy) error {
 	allowed := map[string][]string{
 		"metric": {"metric_key", "pool", "step", "peer", "method", "outcome", "value_status"},
 		"log": {"body_omitted", "source_record_digest", "event_name", "error_type", "severity_text", "outcome",
-			"from", "to", "state", "step", "replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id"},
-		"span": {"duration_us", "operation", "error", "error.type", "otel.status_code", "rpc.system", "rpc.service",
+			"from", "to", "state", "step", "replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id", "message"},
+		"span": {"duration_us", "operation", "error", "error.type", "otel.status_code", "rpc.grpc.status_code", "status_description", "rpc.system", "rpc.service",
 			"rpc.method", "messaging.operation", "messaging.message.id", "order.no", "operation_id", "payment.id"},
 		"trace_summary": {"visible_spans", "error_spans"},
 	}
 	for key, value := range record.Fields {
-		if !slices.Contains(allowed[record.Type], key) || !fieldPattern.MatchString(value) {
+		if !slices.Contains(allowed[record.Type], key) {
+			return ErrResponse
+		}
+		// Sanitized free text has its own rule: it must already be in its final form.
+		if key == "message" || key == "status_description" {
+			if clean, ok := SanitizeMessage(value); !ok || clean != value {
+				return ErrResponse
+			}
+			continue
+		}
+		if !fieldPattern.MatchString(value) {
 			return ErrResponse
 		}
 		for _, marker := range []string{"failpoint", "password", "secret", "bearer", "token", "@"} {

@@ -71,7 +71,7 @@ Harness 检查 schema、引用存在、已保存证据范围、时间线及常�
 
 落盘顶层包含 `mode=scripted_replay`、输入 Bundle digest、upstream_sha、Run、步骤和报告。Run ID、停止原因与策略版本由 Harness 写入，决策不能指定。摘要 hash 用于核对内容，不等于签名或防篡改存储。
 
-日志查询的派生摘要见[日志聚合指南](log-patterns.md)。当前策略为 `harness-v6`，输出新增 `run.log_patterns`，原始脚本继续兼容；摘要与证据合计受容量上限约束。
+日志查询的派生摘要见[日志聚合指南](log-patterns.md)。当前策略为 `harness-v7`，输出新增 `run.log_patterns`，原始脚本继续兼容；摘要与证据合计受容量上限约束。
 
 ## 5. 验证与后续
 

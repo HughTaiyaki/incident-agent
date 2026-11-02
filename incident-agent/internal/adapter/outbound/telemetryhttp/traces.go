@@ -171,10 +171,15 @@ func (c *Client) traceRecords(tr jaegerTrace, result *telemetry.Result) ([]telem
 			fields["operation"] = span.Operation
 		}
 		values := tagsMap(span.Tags)
-		for _, key := range []string{"error", "error.type", "otel.status_code", "rpc.system", "rpc.service", "rpc.method",
+		for _, key := range []string{"error", "error.type", "otel.status_code", "rpc.grpc.status_code", "rpc.system", "rpc.service", "rpc.method",
 			"messaging.operation", "messaging.message.id", "order.no", "operation_id", "payment.id"} {
 			if value := values[key]; safeToken(value) {
 				fields[key] = value
+			}
+		}
+		if fields["otel.status_code"] != "" || fields["error"] != "" {
+			if description, ok := telemetry.SanitizeMessage(values["otel.status_description"]); ok {
+				fields["status_description"] = description
 			}
 		}
 		references := []telemetry.Reference{}
