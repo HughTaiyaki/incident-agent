@@ -10,7 +10,7 @@ import (
 )
 
 // ModelTokenLimit caps reserved input and output tokens per run.
-const ModelTokenLimit = 24000
+const ModelTokenLimit = 36000
 
 // ReportTokenReserve protects the final synthesis allowance.
 const ReportTokenReserve = 9000
@@ -150,9 +150,9 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		}
 		return nil, err
 	}
-	reserved := estimateInput(prompt) + output
+	reserved := estimateInput(view.Phase, prompt) + output
 	call := ModelCall{Estimator: "utf8-half-bytes-plus-256-v2", ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
-		ContextDigest: telemetry.Hash(append([]byte(modelInstructions), prompt...)), Reserved: reserved,
+		ContextDigest: telemetry.Hash(append([]byte(instructionsFor(view.Phase)), prompt...)), Reserved: reserved,
 		Charged: reserved, Estimated: true, Status: "UNKNOWN", OmittedRecords: omittedRecords, OmittedQueries: omittedQueries}
 	if m.reserve != nil {
 		if err := m.reserve(ctx, call); err != nil {
@@ -161,7 +161,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	m.charged += reserved // Reservation occurs before any external call; unknown usage is never refunded.
 	m.calls = append(m.calls, call)
-	response, callErr := m.provider.Complete(ctx, CompletionRequest{Instructions: modelInstructions, Input: prompt, MaxOutputTokens: output})
+	response, callErr := m.provider.Complete(ctx, CompletionRequest{Instructions: instructionsFor(view.Phase), Input: prompt, MaxOutputTokens: output})
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

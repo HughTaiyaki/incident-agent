@@ -25,8 +25,8 @@ func TestBuildModelInput(t *testing.T) {
 	if err = json.Unmarshal(data, &input); err != nil {
 		t.Fatal(err)
 	}
-	if estimateInput(data) > 4500 || len(input.Records) == 0 || omitted == 0 || len(input.Records) > 24 {
-		t.Fatalf("size=%d records=%d omitted=%d", estimateInput(data), len(input.Records), omitted)
+	if estimateInput(view.Phase, data) > 4500 || len(input.Records) == 0 || omitted == 0 || len(input.Records) > 24 {
+		t.Fatalf("size=%d records=%d omitted=%d", estimateInput(view.Phase, data), len(input.Records), omitted)
 	}
 	if input.Queries[0].Quality.Coverage != "UNKNOWN" || input.OmittedRecords != 100-len(input.Records) {
 		t.Fatal(input)
@@ -220,5 +220,55 @@ func TestUnmaskQueryOnlyRewritesQueries(t *testing.T) {
 	unknown := `{"kind":"query","query":{"order_id":"masked-0000000000000000"}}`
 	if got := string(unmaskQuery([]byte(unknown), evidence, "salt")); got != unknown {
 		t.Fatal(got)
+	}
+}
+
+func TestModelInputShowsFiltersAndUncheckedServices(t *testing.T) {
+	request := request()
+	request.Services = []string{"order-service", "goods-service"}
+	q := query()
+	q.Severity, q.OrderID = "ERROR", "real-order"
+	filtered := telemetry.NewResult(q, "loki", "filtered")
+	filtered.Quality.QueryOutcome = "SUCCEEDED"
+	filtered.Finish()
+	data, _, _, err := buildModelInput(View{RunID: "salt", Request: request, Phase: "INVESTIGATING", Evidence: []telemetry.Result{filtered}}, 16000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "real-order") {
+		t.Fatal("filter value leaked:", string(data))
+	}
+	input := decodeInput(t, data)
+	if input.Queries[0].Severity != "ERROR" || !strings.HasPrefix(input.Queries[0].OrderID, "masked-") {
+		t.Fatalf("%+v", input.Queries[0])
+	}
+	// A filtered query does not count as having looked at the service's logs.
+	if len(input.UncheckedLogs) != 2 || len(input.UncheckedTraces) != 2 {
+		t.Fatalf("%v %v", input.UncheckedLogs, input.UncheckedTraces)
+	}
+	plain := query()
+	logs := telemetry.NewResult(plain, "loki", "plain")
+	logs.Quality.QueryOutcome = "SUCCEEDED"
+	logs.Finish()
+	data, _, _, err = buildModelInput(View{Request: request, Phase: "INVESTIGATING", Evidence: []telemetry.Result{logs}}, 16000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := decodeInput(t, data).UncheckedLogs; len(got) != 1 || got[0] != "goods-service" {
+		t.Fatal(got)
+	}
+}
+
+func TestUndefinedMetricPointsAreCountedNotShown(t *testing.T) {
+	result := metricResult("rpc_error_rate", 0.5)
+	result.Records = append(result.Records, telemetry.Record{ID: "undefined", Type: "metric", At: result.Query.Start, Service: result.Query.Service,
+		Environment: result.Query.Environment, Fields: map[string]string{"metric_key": "rpc_error_rate", "value_status": "UNDEFINED"}})
+	data, _, _, err := buildModelInput(View{Request: request(), Phase: "INVESTIGATING", Evidence: []telemetry.Result{result}}, 16000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := decodeInput(t, data)
+	if len(input.Records) != 1 || input.Queries[0].UndefinedPoints != 1 || input.OmittedRecords != 1 {
+		t.Fatalf("records=%d undefined=%d omitted=%d", len(input.Records), input.Queries[0].UndefinedPoints, input.OmittedRecords)
 	}
 }

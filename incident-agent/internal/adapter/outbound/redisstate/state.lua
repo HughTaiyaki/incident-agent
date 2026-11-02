@@ -132,11 +132,11 @@ else
                 if cmd.action=='begin' then
                     if cmd.kind~='model' and cmd.kind~='query' and cmd.kind~='tool' then return reply('INVALID') end
                     if type(cmd.input)~='string' or #cmd.input>65536 then return reply('INVALID') end
-                    if not integer(cmd.cost,0,24000) then return reply('INVALID') end
+                    if not integer(cmd.cost,0,36000) then return reply('INVALID') end
                     if s.operation_count>=40 then return reply('CAPACITY') end
                     if cmd.kind=='model' then
                         if cmd.cost<1 then return reply('INVALID') end
-                        if s.tokens+cmd.cost>24000 or s.model_calls>=12 then return reply('BUDGET') end
+                        if s.tokens+cmd.cost>36000 or s.model_calls>=12 then return reply('BUDGET') end
                         s.tokens=s.tokens+cmd.cost
                         s.model_calls=s.model_calls+1
                     elseif cmd.kind=='query' then

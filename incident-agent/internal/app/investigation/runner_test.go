@@ -130,6 +130,51 @@ func TestExecute(t *testing.T) {
 			t.Fatalf("%+v calls=%d", result, calls)
 		}
 	})
+	t.Run("empty first looks are not lack of progress", func(t *testing.T) {
+		services := []string{"order-service", "goods-service", "user-service", "payment-simulator", "gateway-h5"}
+		r := request()
+		r.Services = services
+		result, _ := Execute(t.Context(), r, decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step > len(services) {
+				return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+			}
+			q := query()
+			q.Service = services[v.Step-1]
+			return raw(Decision{Kind: "query", Query: &q}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			empty := telemetry.NewResult(q, "loki", "empty")
+			empty.Quality.QueryOutcome = "SUCCEEDED"
+			empty.Finish()
+			return empty, nil
+		}))
+		if result.Report.StopReason != "REPORT_ACCEPTED" || len(result.Evidence) != len(services) {
+			t.Fatalf("%+v", result.Report)
+		}
+	})
+	t.Run("investigation can end itself and then must report", func(t *testing.T) {
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			switch {
+			case v.Step == 1:
+				return json.RawMessage(`{"kind":"synthesize"}`), nil // Refused: nothing has been checked.
+			case v.Step == 2:
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			case v.Step == 3:
+				return json.RawMessage(`{"kind":"synthesize"}`), nil
+			case v.Step == 4:
+				if v.Phase != "SYNTHESIZING" {
+					t.Fatal(v.Phase)
+				}
+				return json.RawMessage(`{"kind":"synthesize"}`), nil // Refused: only a report is an answer now.
+			}
+			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, "1"), nil
+		}))
+		if result.Report.StopReason != "INVESTIGATION_COMPLETE" || result.Steps[0].Outcome != "DECISION_REJECTED" || result.Steps[2].Outcome != "SYNTHESIS_REQUESTED" || result.Steps[3].Outcome != "DECISION_REJECTED" {
+			t.Fatalf("%+v %+v", result.Report, result.Steps)
+		}
+	})
 	t.Run("failed query may retry within the limit", func(t *testing.T) {
 		calls := 0
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {

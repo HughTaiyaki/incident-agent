@@ -73,11 +73,17 @@ func decodeDecision(raw []byte) (Decision, error) {
 	if err := Decode(raw, &d); err != nil {
 		return d, err
 	}
+	if d.Kind == synthesizeKind && d.Query == nil && d.Report == nil {
+		return d, nil
+	}
 	if (d.Kind == "query" && d.Query != nil && d.Report == nil) || (d.Kind == "report" && d.Report != nil && d.Query == nil) {
 		return d, nil
 	}
 	return Decision{}, ErrInvalidDecision
 }
+
+// synthesizeKind is how an investigation ends itself and asks to write the report.
+const synthesizeKind = "synthesize"
 
 // reportRejected is the outcome code for a decoded report that failed validation.
 const reportRejected = "REPORT_REJECTED"

@@ -79,7 +79,7 @@ rcli DEL incident:run:<run_id>
 
 ## 费用异常
 
-每 Run 上限 24,000 Token、12 次模型调用，所以费用约等于 Run 数乘上限。先看 `incident_runs_finished_total` 是否异常增长，是否有调用方不断换 `alert_id` 提交。紧急止血：`dc stop worker`。已接受的 Run 会到 deadline，下次启动时直接收尾，不再调用模型。上限是本地估算，账单以供应商为准。
+每 Run 上限 36,000 Token、12 次模型调用，所以费用约等于 Run 数乘上限。先看 `incident_runs_finished_total` 是否异常增长，是否有调用方不断换 `alert_id` 提交。紧急止血：`dc stop worker`。已接受的 Run 会到 deadline，下次启动时直接收尾，不再调用模型。上限是本地估算，账单以供应商为准。
 
 ## 备份与恢复
 

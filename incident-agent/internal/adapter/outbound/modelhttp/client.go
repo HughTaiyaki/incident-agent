@@ -151,7 +151,7 @@ func (c *Client) Complete(ctx context.Context, input investigation.CompletionReq
 		return investigation.CompletionResponse{}, err
 	}
 	if input.MaxOutputTokens < 1 || input.MaxOutputTokens > investigation.MaxOutputTokens ||
-		len(input.Instructions)+len(input.Input) > 24000 || !json.Valid(input.Input) {
+		len(input.Instructions)+len(input.Input) > 64000 || !json.Valid(input.Input) {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}
 	encoded, err := json.Marshal(c.requestBody(input))

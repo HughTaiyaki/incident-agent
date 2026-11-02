@@ -184,12 +184,12 @@ func TestTakeoverPreservesBudgetAndFencesOldWorker(t *testing.T) {
 	begin := action("begin", first.State)
 	begin["operation"] = "model1"
 	begin["kind"] = "model"
-	begin["cost"] = 24000
+	begin["cost"] = 36000
 	started := r.apply(t, begin, "OK")
 	// Force only lease expiry to exercise takeover without a 15-second wall wait.
 	r.command(t, "EVAL", `local s=cjson.decode(redis.call('GET',KEYS[1]));s.lease_until=0;redis.call('SET',KEYS[1],cjson.encode(s));redis.call('ZADD',KEYS[2],0,s.id);return 1`, "2", "state", "leases")
 	next := r.apply(t, map[string]any{"action": "claim", "id": "run1", "owner": "new"}, "OK")
-	if next.State["deadline"] != started.State["deadline"] || next.State["tokens"] != float64(24000) {
+	if next.State["deadline"] != started.State["deadline"] || next.State["tokens"] != float64(36000) {
 		t.Fatal("takeover reset limits")
 	}
 	operations := next.State["operations"].(map[string]any)

@@ -39,7 +39,7 @@ ID、owner、operation 为 1–128 字节字母数字、下划线或连字符。
 - Begin 的 OK 才允许首次发起外部请求；ALREADY 表示之前已预留，**不能据此再发请求**。重复 operation 的 kind/cost/input 不同为 CONFLICT。断连时先读回，不盲目重试外部调用。
 - 接管递增 epoch；旧 Worker 的 Renew/Commit/Complete 被 FENCED。UNKNOWN 仍消耗预算，不能提交迟到结果。当前不自动重试 UNKNOWN；后续 Harness 必须定义新 attempt 及次数限制。
 - Commit 重放同结果返回 ALREADY，不重复增加 version/结果字节；不同结果返回 CONFLICT。终态报告不可覆盖。
-- 存储只做保守额度：模型合计 24,000、最多 12 次，查询最多 16 次，每个实际请求扣 1。未提交或 UNKNOWN 的调用不退还；报告预留、阶段/决策次数、输入估算仍须由后续 Harness 在 Begin 前校验，不能只依赖存储总额。
+- 存储只做保守额度：模型合计 36,000、最多 12 次，查询最多 16 次，每个实际请求扣 1。未提交或 UNKNOWN 的调用不退还；报告预留、阶段/决策次数、输入估算仍须由后续 Harness 在 Begin 前校验，不能只依赖存储总额。
 - 操作结果合计 ≤2MiB，报告 ≤64KiB，checkpoint ≤3MiB，编码后的完整状态 ≤7MiB；参数和状态先编码再写。Key 类型在第一次写入前检查，避免 WRONGTYPE 导致可预见的部分更新。OOM、主机崩溃等仍不是数据库回滚保证。
 - result/report/request/input 是受信任应用写入的字符串；脚本不验证证据引用、脱敏或报告语义。接线时仍必须调用现有 Guard，不能把脚本当公共 API。
 - 当前同一 JSON string 保存状态、checkpoint、调用审计和操作结果，尚无独立 Evidence、Incident 去重和 events Stream。不要据此实现 SSE 或宣称与完整 §7 全部兼容。

@@ -135,8 +135,17 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		decision, err := decodeDecision(raw)
 		// A report written before any query has seen nothing, so ask again rather than
 		// moving to synthesis, where it could only restate that nothing was checked.
-		if err == nil && decision.Kind == "report" && len(run.Evidence) == 0 && phase != "SYNTHESIZING" {
+		if err == nil && decision.Kind != "query" && len(run.Evidence) == 0 && phase != "SYNTHESIZING" {
 			err = ErrInvalidDecision
+		}
+		if err == nil && decision.Kind == synthesizeKind && phase != "SYNTHESIZING" {
+			audit.Outcome, feedback = "SYNTHESIS_REQUESTED", "SYNTHESIS_REQUESTED"
+			run.Steps = append(run.Steps, audit)
+			phase, stopReason = "SYNTHESIZING", "INVESTIGATION_COMPLETE"
+			continue
+		}
+		if err == nil && decision.Kind == synthesizeKind {
+			err = ErrInvalidDecision // Already writing the report; asking again is not an answer.
 		}
 		if err != nil && phase == "SYNTHESIZING" {
 			// One malformed answer must not discard the evidence: repair like an invalid report.
@@ -263,7 +272,9 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 						}
 					}
 				}
-				if added == 0 {
+				// A first look at a service and kind is progress even when empty: quiet
+				// services are common in short incidents and say nothing about the next one.
+				if added == 0 && !firstLook(run.Evidence[:len(run.Evidence)-1], q) {
 					noProgress++
 				} else {
 					noProgress = 0
@@ -285,6 +296,15 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 // maxReportRejections leaves two chances to repair a report. Real models get report
 // shape wrong often enough that one failure should not cost the whole investigation.
 const maxReportRejections = 3
+
+func firstLook(evidence []telemetry.Result, q telemetry.Query) bool {
+	for _, entry := range evidence {
+		if entry.Query.Kind == q.Kind && entry.Query.Service == q.Service && entry.Query.Metric == q.Metric {
+			return false
+		}
+	}
+	return true
+}
 
 func succeededBefore(evidence []telemetry.Result, q telemetry.Query) bool {
 	want, _ := json.Marshal(q)
