@@ -1,5 +1,10 @@
 # 文档维护记录
 
+## 2026-11-02 · 固定故障集第三轮评测
+
+- [第三轮结果](reports/0012-fixed-fault-evaluation.md#第三轮复测)：Top-1 3/18，N1 误判 7/9，未达门槛。D1 组件全对，但错误 Span 到达模型后，正常重复提交被误判成故障。
+- 根因：商城已上报错误描述和日志正文（如 `reserve outcome unknown`、`already processed`、`Error 1062`），是 Agent 适配层没有保留。不需要改商城，但要扩大外发范围，待用户决定。
+
 ## 2026-11-02 · 让错误证据优先（harness-v6）
 
 - 第二轮分析发现错误 Span 从未到达模型：Trace 搜索结果不显示错误，打开后也不优先。现在 Trace 摘要带 `error_spans`，失败记录优先发送。

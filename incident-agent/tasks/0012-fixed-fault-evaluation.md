@@ -1,10 +1,10 @@
 # 任务 0012：固定故障集诊断评测（方案，待审查）
 
-日期：2026-11-02。状态：**进行中：两轮都未达门槛，第二轮 Top-1 3/18。** 对应[路线 P5](../docs/development/production-roadmap.md)，详细标准见[评测方案](../docs/evaluation/plan.md)。
+日期：2026-11-02。状态：**进行中：三轮都未达门槛，待用户决定外发范围。** 对应[路线 P5](../docs/development/production-roadmap.md)，详细标准见[评测方案](../docs/evaluation/plan.md)。
 
 ## 当前进度（2026-11-02）
 
-两轮评测已完成，**都未达门槛。第二轮 Top-1 3/18，其余三项达标**，见[结果报告](../docs/reports/0012-fixed-fault-evaluation.md#第二轮复测)。
+三轮评测已完成，**都未达门槛。第三轮 Top-1 3/18，N1 误判 7/9**，见[结果报告](../docs/reports/0012-fixed-fault-evaluation.md#第三轮复测)。根因是适配层过滤了决定性的错误描述和日志正文，修复需要用户确认扩大外发范围。
 
 用户把第 5 步的可诊断性判定和第 7 步的判分委托给 Claude，这是非盲判定，已在报告中标明。
 
