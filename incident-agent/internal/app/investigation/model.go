@@ -192,7 +192,8 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		m.calls[index].Status = "OUTPUT_TOO_LARGE"
 		return nil, ErrModelProvider
 	}
-	return expandCitations(unwrappedReport(response.Decision), view.Evidence), nil
+	decision := expandCitations(unwrappedReport(response.Decision), view.Evidence)
+	return unmaskQuery(decision, view.Evidence, view.RunID), nil
 }
 
 // unwrappedReport restores the envelope when a model omits kind, which DeepSeek does

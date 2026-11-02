@@ -99,7 +99,9 @@ func (r *Replay) Query(ctx context.Context, input telemetry.Query, _ *telemetry.
 }
 
 func covers(captured, q telemetry.Query) bool {
-	sameScope := captured.Kind == q.Kind && captured.Service == q.Service && captured.Environment == q.Environment
+	// A trace spans services, so the one named in the query does not narrow it.
+	sameService := captured.Service == q.Service || q.Kind == "trace"
+	sameScope := captured.Kind == q.Kind && sameService && captured.Environment == q.Environment
 	withinWindow := !q.Start.Before(captured.Start) && !q.End.After(captured.End)
 	if !sameScope || !withinWindow {
 		return false

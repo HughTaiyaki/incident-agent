@@ -42,8 +42,13 @@ func ReadQueries(reader io.Reader, policy telemetry.Policy) ([]telemetry.Query, 
 
 // Collect completes independent queries even when a source is unavailable, preserving failure evidence.
 func Collect(ctx context.Context, querier Querier, queries []telemetry.Query) ([]telemetry.Result, error) {
+	return CollectWithin(ctx, querier, queries, 16)
+}
+
+// CollectWithin is Collect with an explicit limit on backend requests.
+func CollectWithin(ctx context.Context, querier Querier, queries []telemetry.Query, requests int) ([]telemetry.Result, error) {
 	results := []telemetry.Result{}
-	budget := telemetry.NewBudget(16)
+	budget := telemetry.NewBudget(requests)
 	failures := []error{}
 	for _, query := range queries {
 		if err := ctx.Err(); err != nil {

@@ -1,0 +1,219 @@
+// Package evaluation prepares frozen fault samples and records scored investigations.
+// It only reads telemetry; running a fault experiment stays with the operator.
+package evaluation
+
+import (
+	"encoding/json"
+	"errors"
+	"regexp"
+	"slices"
+	"time"
+
+	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
+	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
+)
+
+// RequestSummary is the same for every case, so the request itself gives nothing away.
+const RequestSummary = "订单交易在该窗口可能出现异常，核查发生了什么、影响范围和当前状态。"
+
+// maxTraces bounds per-sample trace detail queries.
+const maxTraces = 12
+
+var metrics = []string{"order_error_rate", "rpc_error_rate", "rpc_latency_p95", "workflow_backlog", "workflow_oldest_age",
+	"db_pool_utilization", "db_connection_wait_rate", "db_connection_wait_seconds_rate", "payment_confirmation_delay_p95"}
+
+// Request is what the investigator is told about a sample: a window and nothing else.
+func Request(services []string, environment string, start, end time.Time) investigation.Request {
+	return investigation.Request{Service: "order-service", Services: slices.Clone(services), Environment: environment,
+		Start: start, End: end, Summary: RequestSummary}
+}
+
+// PlanQueries covers what an investigation could ask of a live backend. Severity-filtered
+// logs are captured separately because an unfiltered query keeps only the earliest records.
+func PlanQueries(services []string, environment string, start, end time.Time) []telemetry.Query {
+	base := telemetry.Query{Environment: environment, Start: start, End: end}
+	queries := []telemetry.Query{}
+	for _, service := range services {
+		add := func(q telemetry.Query) {
+			q.Environment, q.Start, q.End, q.Service = base.Environment, base.Start, base.End, service
+			queries = append(queries, q)
+		}
+		add(telemetry.Query{Kind: "logs"})
+		add(telemetry.Query{Kind: "logs", Severity: "ERROR"})
+		add(telemetry.Query{Kind: "logs", Severity: "WARN"})
+		add(telemetry.Query{Kind: "traces"})
+		for _, metric := range metrics {
+			add(telemetry.Query{Kind: "metrics", Metric: metric})
+		}
+	}
+	return queries
+}
+
+// TraceQueries asks for detail on the traces most likely to matter: those on error
+// and warning logs first, then those the trace search found.
+func TraceQueries(results []telemetry.Result) []telemetry.Query {
+	queries := []telemetry.Query{}
+	seen := map[string]bool{}
+	add := func(entry telemetry.Result, record telemetry.Record) {
+		if record.TraceID == "" || seen[record.TraceID] || len(queries) >= maxTraces {
+			return
+		}
+		seen[record.TraceID] = true
+		queries = append(queries, telemetry.Query{Kind: "trace", Service: entry.Query.Service, Environment: entry.Query.Environment,
+			Start: entry.Query.Start, End: entry.Query.End, TraceID: record.TraceID})
+	}
+	for _, pick := range []func(telemetry.Query) bool{
+		func(q telemetry.Query) bool { return q.Severity == "ERROR" },
+		func(q telemetry.Query) bool { return q.Severity == "WARN" },
+		func(q telemetry.Query) bool { return q.Kind == "traces" },
+	} {
+		for _, entry := range results {
+			if pick(entry.Query) {
+				for _, record := range entry.Records {
+					add(entry, record)
+				}
+			}
+		}
+	}
+	return queries
+}
+
+var leakPattern = regexp.MustCompile(`(?i)failpoint|\bfault|inject|barrier|mutation|testtrade|\bT[0-9]{1,2}\b|\bC[1-3]\b`)
+
+// LeakHit says where an experiment hint appears. It names the field, not the value.
+type LeakHit struct {
+	Field string `json:"field"`
+	Match string `json:"match"`
+	Count int    `json:"count"`
+}
+
+// ScanLeaks looks through everything a model could be shown. A hit needs human judgment:
+// removing it silently could also remove real evidence.
+func ScanLeaks(entries []telemetry.Result) []LeakHit {
+	counts := map[[2]string]int{}
+	scan := func(field, value string) {
+		for _, match := range leakPattern.FindAllString(value, -1) {
+			counts[[2]string{field, match}]++
+		}
+	}
+	for _, entry := range entries {
+		for _, record := range entry.Records {
+			scan("service", record.Service)
+			for key, value := range record.Fields {
+				scan("fields."+key, value)
+				scan("field_name", key)
+			}
+		}
+	}
+	hits := []LeakHit{}
+	for key, count := range counts {
+		hits = append(hits, LeakHit{Field: key[0], Match: key[1], Count: count})
+	}
+	slices.SortFunc(hits, func(a, b LeakHit) int {
+		if a.Field+a.Match < b.Field+b.Match {
+			return -1
+		}
+		return 1
+	})
+	return hits
+}
+
+// SourceSummary records how much each backend returned, including failures.
+type SourceSummary struct {
+	Queries int `json:"queries"`
+	Failed  int `json:"failed"`
+	Records int `json:"records"`
+}
+
+// Manifest describes a sample. It holds no case label or fault details, which live with
+// the evaluator's truth file outside what an investigation reads.
+type Manifest struct {
+	SampleID     string                   `json:"sample_id"`
+	UpstreamSHA  string                   `json:"upstream_sha"`
+	Environment  string                   `json:"environment"`
+	Start        time.Time                `json:"start"`
+	End          time.Time                `json:"end"`
+	CapturedAt   time.Time                `json:"captured_at"`
+	BundleDigest string                   `json:"bundle_digest"`
+	Sources      map[string]SourceSummary `json:"sources"`
+	LeakHits     []LeakHit                `json:"leak_hits"`
+	DerivedFrom  string                   `json:"derived_from,omitempty"`
+	Dropped      []string                 `json:"dropped_sources,omitempty"`
+}
+
+// Summarize fills in the per-source counts.
+func Summarize(entries []telemetry.Result) map[string]SourceSummary {
+	sources := map[string]SourceSummary{}
+	for _, entry := range entries {
+		summary := sources[entry.Query.Kind]
+		summary.Queries++
+		summary.Records += len(entry.Records)
+		if entry.Quality.QueryOutcome != "SUCCEEDED" {
+			summary.Failed++
+		}
+		sources[entry.Query.Kind] = summary
+	}
+	return sources
+}
+
+// Derive builds an evidence-gap sample: the named query kinds are gone from the bundle,
+// so a replay reports them as not covered rather than as healthy and empty.
+func Derive(bundle telemetry.Bundle, dropKinds []string) (telemetry.Bundle, error) {
+	if len(dropKinds) == 0 {
+		return telemetry.Bundle{}, errors.New("nothing to drop")
+	}
+	kept := []telemetry.Result{}
+	for _, entry := range bundle.Entries {
+		if !slices.Contains(dropKinds, entry.Query.Kind) {
+			kept = append(kept, entry)
+		}
+	}
+	if len(kept) == len(bundle.Entries) {
+		return telemetry.Bundle{}, errors.New("no entries matched the kinds to drop")
+	}
+	return telemetry.NewBundle("replay", bundle.UpstreamSHA, kept)
+}
+
+// Outcome is one investigation's result in a form that can be compared and scored.
+type Outcome struct {
+	Sample        string               `json:"sample"`
+	Attempt       int                  `json:"attempt"`
+	BundleDigest  string               `json:"bundle_digest"`
+	Model         string               `json:"model"`
+	Policy        string               `json:"policy_version"`
+	Seconds       float64              `json:"seconds"`
+	InputTokens   int                  `json:"input_tokens"`
+	OutputTokens  int                  `json:"output_tokens"`
+	ChargedTokens int                  `json:"charged_tokens"`
+	ModelCalls    int                  `json:"model_calls"`
+	Steps         []investigation.Step `json:"steps"`
+	Queries       []telemetry.Query    `json:"queries"`
+	Report        investigation.Report `json:"report"`
+}
+
+// NewOutcome extracts the comparable fields from a finished run.
+func NewOutcome(sample string, attempt int, digest, model string, run investigation.Run) Outcome {
+	outcome := Outcome{Sample: sample, Attempt: attempt, BundleDigest: digest, Model: model, Policy: investigation.PolicyVersion,
+		Seconds: run.FinishedAt.Sub(run.CreatedAt).Seconds(), ModelCalls: len(run.ModelCalls), Steps: run.Steps,
+		Queries: []telemetry.Query{}, Report: run.Report}
+	for _, call := range run.ModelCalls {
+		outcome.ChargedTokens += call.Charged
+		if call.Usage != nil {
+			outcome.InputTokens += call.Usage.InputTokens
+			outcome.OutputTokens += call.Usage.OutputTokens
+		}
+	}
+	for _, entry := range run.Evidence {
+		outcome.Queries = append(outcome.Queries, entry.Query)
+	}
+	return outcome
+}
+
+// Encode writes stable, indented JSON for files people read and diff.
+func Encode(value any) ([]byte, error) {
+	data, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return nil, errors.New("cannot encode evaluation record")
+	}
+	return append(data, '\n'), nil
+}

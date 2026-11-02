@@ -204,3 +204,21 @@ func TestCitationsExpandToStoredIDs(t *testing.T) {
 		t.Fatalf("%s", got)
 	}
 }
+
+func TestUnmaskQueryOnlyRewritesQueries(t *testing.T) {
+	record := telemetry.Record{ID: "r", Fields: map[string]string{"order_id": "real-order", "event_name": "order.failed"}}
+	evidence := []telemetry.Result{{Records: []telemetry.Record{record}}}
+	masked := maskIdentifiers(record, "salt").Fields["order_id"]
+	query := `{"kind":"query","query":{"kind":"logs","order_id":"` + masked + `"}}`
+	if got := string(unmaskQuery([]byte(query), evidence, "salt")); !strings.Contains(got, `"real-order"`) || strings.Contains(got, masked) {
+		t.Fatal(got)
+	}
+	report := `{"kind":"report","report":{"unknowns":["` + masked + `"]}}`
+	if got := string(unmaskQuery([]byte(report), evidence, "salt")); got != report {
+		t.Fatal("report text must keep pseudonyms:", got)
+	}
+	unknown := `{"kind":"query","query":{"order_id":"masked-0000000000000000"}}`
+	if got := string(unmaskQuery([]byte(unknown), evidence, "salt")); got != unknown {
+		t.Fatal(got)
+	}
+}

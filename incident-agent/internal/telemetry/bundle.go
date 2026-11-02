@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+// MaxBundleEntries bounds a bundle's queries. Evaluation captures cover every service,
+// metric and severity so a replay can answer what a live backend could.
+const MaxBundleEntries = 128
+
 // MaxBundleBytes bounds an imported or exported evidence bundle.
 const MaxBundleBytes = 16 << 20
 
@@ -186,7 +190,7 @@ func ReadBundle(reader io.Reader) (Bundle, error) {
 	if decoder.Decode(&extra) != io.EOF {
 		return Bundle{}, errors.New("trailing evidence bundle data")
 	}
-	if b.SchemaVersion != "1" || b.PolicyVersion != PolicyVersion || len(b.Entries) > 16 {
+	if b.SchemaVersion != "1" || b.PolicyVersion != PolicyVersion || len(b.Entries) > MaxBundleEntries {
 		return Bundle{}, errors.New("unsupported evidence bundle")
 	}
 	digest := b.Digest

@@ -16,6 +16,7 @@ build:
 	$(GO) build -o bin/incident-investigate ./cmd/incident-investigate
 	$(GO) build -o bin/incident-model ./cmd/incident-model
 	$(GO) build -o bin/incident-worker ./cmd/incident-worker
+	$(GO) build -o bin/incident-eval ./cmd/incident-eval
 
 ## fmt: Format all Go packages.
 fmt:

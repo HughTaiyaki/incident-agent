@@ -53,7 +53,7 @@
 
 发送前，记录中的业务 ID（order_id、operation_id、event_id、order.no、payment.id、messaging.message.id）换成按 Run 加盐的假名，同一 Run 内仍可关联；Trace/Span ID 保留以便继续查询。这是假名化，不是匿名化。
 
-模型只得到有界数据，不得到 Shell/SQL/URL 工具。模型漏掉外层 `kind` 时（DeepSeek 常见），只补外层，内容仍走严格解码和报告校验。返回决策继续经过既有查询 Guard 和 Report Guard；提示词不能替代代码权限控制，引用存在也不证明语义成立。
+模型可以按 severity、event_name、order_id 等过滤日志，因为不过滤的查询只返回窗口内最早的记录。模型只见过假名，所以查询里的假名由程序还原成真实值再发给只读后端；报告正文仍保留假名。模型只得到有界数据，不得到 Shell/SQL/URL 工具。模型漏掉外层 `kind` 时（DeepSeek 常见），只补外层，内容仍走严格解码和报告校验。返回决策继续经过既有查询 Guard 和 Report Guard；提示词不能替代代码权限控制，引用存在也不证明语义成立。
 
 ## 4. Token 预留与审计
 
