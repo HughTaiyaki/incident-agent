@@ -1,10 +1,10 @@
 # 任务 0012：固定故障集诊断评测（方案，待审查）
 
-日期：2026-11-02。状态：**进行中：首轮未达门槛，待修复后用新样本复测。** 对应[路线 P5](../docs/development/production-roadmap.md)，详细标准见[评测方案](../docs/evaluation/plan.md)。
+日期：2026-11-02。状态：**进行中：两轮都未达门槛，第二轮 Top-1 3/18。** 对应[路线 P5](../docs/development/production-roadmap.md)，详细标准见[评测方案](../docs/evaluation/plan.md)。
 
 ## 当前进度（2026-11-02）
 
-首轮评测已完成，**未达门槛：Top-1 0/18，无依据断言率 11.5%**，见[结果报告](../docs/reports/0012-fixed-fault-evaluation.md)。下一步是修复失败原因并用新样本复测。
+两轮评测已完成，**都未达门槛。第二轮 Top-1 3/18，其余三项达标**，见[结果报告](../docs/reports/0012-fixed-fault-evaluation.md#第二轮复测)。
 
 用户把第 5 步的可诊断性判定和第 7 步的判分委托给 Claude，这是非盲判定，已在报告中标明。
 

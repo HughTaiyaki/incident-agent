@@ -46,7 +46,7 @@ docker compose -f deploy/compose.yaml --env-file deploy/.env up --build --detach
 | 项目 | 结果 | 怎么用 |
 | --- | --- | --- |
 | 单 Run 耗时（DeepSeek，Bundle 3 次，在线 2 次） | 6–17 秒，在线 10.7 秒；接管一次约 25 秒 | deadline 180 秒且 Worker 串行，按 17 秒算最多排约 10 个 |
-| 单 Run Token（DeepSeek） | 有错误日志的在线窗口约 16,600，需修正报告时约 21,500；实测约 ¥0.03/次（多为非高峰时段） | 费用预算按接近上限估算，高峰价格翻倍 |
+| 单 Run Token（DeepSeek） | 固定故障样本中位数约 29,000，上限 36,000；实测约 ¥0.04/次（多为非高峰时段） | 费用预算按接近上限估算，高峰价格翻倍 |
 | `INCIDENT_MAX_ACTIVE_RUNS` | 建议从 2 开始，不超过 8 | 再多的 Run 大概率排队到 DEADLINE。慢模型要下调：单次调用可到 30 秒 |
 | 内存预留 | 256MiB 实测接受 31 个活跃 Run，2GiB 接受 255 个 | 符合 `maxmemory ÷ 8MiB`，超出返回 503 |
 | 终态 Run 内存 | 模拟模型 40 次约 12KiB/个；真实 Run 结果 8–13KiB，未直接测总占用 | 保留 7 天；单 Run 上限 7MiB |
