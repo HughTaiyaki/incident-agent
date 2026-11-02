@@ -118,6 +118,9 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	if !m.started || m.exhausted || len(m.calls) >= 12 {
 		return nil, ErrModelBudget
 	}
+	if sweep := SweepDecision(view); sweep != nil {
+		return sweep, nil
+	}
 	// The reserve is a floor investigation cannot touch, not a cap on the report: a
 	// report that cannot see records has nothing to cite and can only be INCONCLUSIVE.
 	available := ModelTokenLimit - m.charged
@@ -194,6 +197,32 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	decision := expandCitations(unwrappedReport(response.Decision), view.Evidence)
 	return unmaskQuery(decision, view.Evidence, view.RunID), nil
+}
+
+// SweepDecision returns the next query of a run's log sweep without involving a model, or
+// nil when the sweep is finished or not requested. Coverage must not depend on a model's
+// choices: signals often sit in one downstream service, and left to itself a model can spend
+// its whole budget elsewhere. The rule is the same for every run, so it reveals no answer,
+// and it is derived only from saved evidence, so a resumed run continues where it stopped.
+func SweepDecision(view View) json.RawMessage {
+	if !view.Request.LogSweep || view.Phase == "SYNTHESIZING" {
+		return nil
+	}
+	for _, service := range view.Request.Services {
+		found := false
+		for _, entry := range view.Evidence {
+			q := entry.Query
+			found = found || (q.Kind == "logs" && q.Service == service && q.Severity == "" && q.EventName == "")
+		}
+		if !found {
+			decision, err := json.Marshal(Decision{Kind: "query", Query: &telemetry.Query{Kind: "logs", Service: service}})
+			if err != nil {
+				return nil
+			}
+			return decision
+		}
+	}
+	return nil
 }
 
 // unwrappedReport restores the envelope when a model omits kind, which DeepSeek does

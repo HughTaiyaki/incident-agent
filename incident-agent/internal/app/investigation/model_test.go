@@ -217,3 +217,64 @@ func TestUnwrappedReportOnlyAddsEnvelope(t *testing.T) {
 		}
 	}
 }
+
+func TestLogSweepCoversEveryServiceBeforeTheModel(t *testing.T) {
+	r := request()
+	r.Services = []string{"order-service", "goods-service", "user-service"}
+	r.LogSweep = true
+	var firstPrompt modelInput
+	calls := 0
+	model, err := NewModelDecider(providerFunc(func(_ context.Context, c CompletionRequest) (CompletionResponse, error) {
+		calls++
+		if calls == 1 {
+			if err := json.Unmarshal(c.Input, &firstPrompt); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())})}, nil
+	}), "test-model", 32000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := []string{}
+	result, err := Execute(t.Context(), r, model, queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+		seen = append(seen, q.Service)
+		return observation(q, q.Service), nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(seen, ",") != "order-service,goods-service,user-service" {
+		t.Fatal(seen)
+	}
+	// The sweep is free of model cost, and the model starts with what it collected.
+	if calls != 1 || len(result.ModelCalls) != 1 || len(firstPrompt.Records) != 3 || len(firstPrompt.UncheckedLogs) != 0 {
+		t.Fatalf("calls=%d records=%d unchecked=%v", calls, len(firstPrompt.Records), firstPrompt.UncheckedLogs)
+	}
+	if result.Report.StopReason != "REPORT_ACCEPTED" {
+		t.Fatal(result.Report.StopReason)
+	}
+}
+
+func TestLogSweepIsOffUnlessRequestedAndNotInSynthesis(t *testing.T) {
+	r := request()
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING"}) != nil {
+		t.Fatal("swept without being asked")
+	}
+	r.LogSweep = true
+	if SweepDecision(View{Request: r, Phase: "SYNTHESIZING"}) != nil {
+		t.Fatal("swept during synthesis")
+	}
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING"}) == nil {
+		t.Fatal("did not sweep")
+	}
+	// A filtered query does not count as having read the service's logs.
+	q := query()
+	q.Severity = "ERROR"
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: q}}}) == nil {
+		t.Fatal("filtered query counted as coverage")
+	}
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: query()}}}) != nil {
+		t.Fatal("swept twice")
+	}
+}

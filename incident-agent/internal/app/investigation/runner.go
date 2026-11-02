@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
@@ -160,6 +161,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
 			noProgress++
 		} else if decision.Kind == "report" {
+			groundTimeline(decision.Report, run.Evidence)
 			if err = ValidateReport(*decision.Report, run.Evidence); err == nil {
 				audit.Outcome = "REPORT_ACCEPTED"
 				run.Steps = append(run.Steps, audit)
@@ -296,6 +298,40 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 // maxReportRejections leaves two chances to repair a report. Real models get report
 // shape wrong often enough that one failure should not cost the whole investigation.
 const maxReportRejections = 3
+
+// groundTimeline takes each timeline time from the evidence instead of trusting the model's
+// copy of it. A slip of a few milliseconds used to discard a whole sound report. Citations
+// are still validated afterwards, so an item citing no real record is refused.
+func groundTimeline(draft *Draft, evidence []telemetry.Result) {
+	times := map[string]time.Time{}
+	for _, entry := range evidence {
+		if entry.Quality.QueryOutcome != "SUCCEEDED" {
+			continue
+		}
+		for _, record := range entry.Records {
+			times[record.ID] = record.At
+		}
+	}
+	for i := range draft.Timeline {
+		item := &draft.Timeline[i]
+		matches := false
+		var first time.Time
+		for _, id := range item.Claim.EvidenceIDs {
+			at, ok := times[id]
+			if !ok {
+				continue
+			}
+			if first.IsZero() {
+				first = at
+			}
+			matches = matches || at.Equal(item.At)
+		}
+		if !matches && !first.IsZero() {
+			item.At = first
+		}
+	}
+	slices.SortStableFunc(draft.Timeline, func(a, b TimelineItem) int { return a.At.Compare(b.At) })
+}
 
 // withRequestScope fills what a run fixes anyway. Scope checks still apply afterwards, and
 // a model that names another environment or a wider window is still refused.

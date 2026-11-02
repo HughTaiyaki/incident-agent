@@ -203,6 +203,39 @@ func TestExecute(t *testing.T) {
 			t.Fatalf("%+v", result.Steps)
 		}
 	})
+	t.Run("timeline times come from the evidence", func(t *testing.T) {
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step == 1 {
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			}
+			id := v.Evidence[0].Records[0].ID
+			d := validDraft(id)
+			d.Timeline = []TimelineItem{{At: v.Request.End, Claim: Claim{Text: "时间写错的事件。", EvidenceIDs: []string{id}}}}
+			return raw(Decision{Kind: "report", Report: &d}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, "1"), nil
+		}))
+		if result.Report.StopReason != "REPORT_ACCEPTED" || len(result.Report.Timeline) != 1 || !result.Report.Timeline[0].At.Equal(request().Start) {
+			t.Fatalf("%+v", result.Report)
+		}
+	})
+	t.Run("timeline citing no real record is still refused", func(t *testing.T) {
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step == 1 {
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			}
+			d := fallback()
+			d.Timeline = []TimelineItem{{At: v.Request.Start, Claim: Claim{Text: "没有依据的事件。", EvidenceIDs: []string{"invented"}}}}
+			return raw(Decision{Kind: "report", Report: &d}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, "1"), nil
+		}))
+		if result.Report.StopReason != "REPORT_INVALID" || len(result.Report.Timeline) != 0 {
+			t.Fatalf("%+v", result.Report)
+		}
+	})
 	t.Run("failed query may retry within the limit", func(t *testing.T) {
 		calls := 0
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {

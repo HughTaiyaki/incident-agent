@@ -10,7 +10,7 @@ import (
 )
 
 // PolicyVersion identifies the Harness guard and execution policy.
-const PolicyVersion = "harness-v7"
+const PolicyVersion = "harness-v8"
 
 // MaxEvidenceBytes bounds saved evidence and derived log summaries.
 const MaxEvidenceBytes = 2 << 20
@@ -26,6 +26,8 @@ type Request struct {
 	Start       time.Time `json:"start"`
 	End         time.Time `json:"end"`
 	Summary     string    `json:"summary"`
+	// LogSweep has the harness read every service's logs before the model chooses anything.
+	LogSweep bool `json:"log_sweep,omitempty"`
 }
 
 // Decider returns one untrusted JSON decision. Implementations must honor context cancellation.

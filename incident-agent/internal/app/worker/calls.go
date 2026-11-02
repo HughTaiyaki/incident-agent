@@ -86,6 +86,11 @@ func (d *durableDecider) ModelAudit() []investigation.ModelCall {
 }
 func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (json.RawMessage, error) {
 	d.step = view.Step
+	// A sweep query is not a model call, so it has nothing to journal or charge here; its
+	// query is journaled as usual and a resumed run recomputes the same decision.
+	if sweep := investigation.SweepDecision(view); sweep != nil {
+		return sweep, nil
+	}
 	id := fmt.Sprintf("model-%d", view.Step)
 	s := d.session
 	s.mu.Lock()

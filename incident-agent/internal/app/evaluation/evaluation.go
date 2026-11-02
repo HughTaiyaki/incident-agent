@@ -25,7 +25,7 @@ var metrics = []string{"order_error_rate", "rpc_error_rate", "rpc_latency_p95", 
 // Request is what the investigator is told about a sample: a window and nothing else.
 func Request(services []string, environment string, start, end time.Time) investigation.Request {
 	return investigation.Request{Service: "order-service", Services: slices.Clone(services), Environment: environment,
-		Start: start, End: end, Summary: RequestSummary}
+		Start: start, End: end, Summary: RequestSummary, LogSweep: true}
 }
 
 // PlanQueries covers what an investigation could ask of a live backend. Severity-filtered

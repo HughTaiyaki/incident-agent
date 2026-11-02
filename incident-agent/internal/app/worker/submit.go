@@ -32,6 +32,8 @@ type Submission struct {
 
 // Template holds the server-side identity frozen into every submitted job.
 type Template struct {
+	// LogSweep reads every service\'s logs before the model chooses any query.
+	LogSweep      bool
 	Model         string
 	Window        int
 	ProviderID    string
@@ -83,7 +85,7 @@ func Submit(ctx context.Context, store runstate.Store, template Template, input 
 		return Submitted{}, investigation.ErrInvalidInput
 	}
 	job := Job{
-		Request: investigation.Request{Service: input.Service, Services: slices.Clone(template.Services), Environment: input.Environment, Start: start, End: end, Summary: input.Summary},
+		Request: investigation.Request{LogSweep: template.LogSweep, Service: input.Service, Services: slices.Clone(template.Services), Environment: input.Environment, Start: start, End: end, Summary: input.Summary},
 		Model:   template.Model, Window: template.Window, ProviderID: template.ProviderID,
 		FixtureDigest: template.FixtureDigest, TelemetryID: template.TelemetryID, InputDigest: telemetry.Hash(canonical),
 	}

@@ -132,7 +132,8 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 		Token: token, Store: store, MaxActive: maxActive, Readiness: store.Readiness,
 		Now: time.Now, Stats: store.Stats,
 		Template: worker.Template{
-			Model: model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
+			LogSweep: true,
+			Model:    model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
 			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: telemetry.DefaultPolicy().Services,
 		},
 	}

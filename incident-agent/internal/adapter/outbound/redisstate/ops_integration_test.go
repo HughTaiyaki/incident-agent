@@ -224,3 +224,40 @@ func TestRedisRestartStopsWorkerThenRecovers(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// The sweep goes through the journal like any query, so a takeover replays it rather than
+// repeating requests, and it spends no model budget.
+func TestLogSweepIsDurableAndSurvivesTakeover(t *testing.T) {
+	r := newRedis(t)
+	c := clientFor(t, r, "sweep")
+	job, p, q := workerInputs(t)
+	job.Request.LogSweep = true
+	if err := worker.Enqueue(t.Context(), c, "run1", job, testMaxActive); err != nil {
+		t.Fatal(err)
+	}
+	fault := &lostAckStore{Store: c, action: "commit", operation: "tool-2"}
+	first := worker.Worker{Store: fault, Owner: "old", Build: factory(p, q)}
+	if err := first.Process(t.Context(), "run1"); !errors.Is(err, investigation.ErrPersistence) {
+		t.Fatalf("lost ack should stop: %v", err)
+	}
+	if p.calls != 0 {
+		t.Fatalf("model called during sweep: %d", p.calls)
+	}
+	queriesBefore := q.calls
+	expireLease(t, r, "sweep")
+	second := worker.Worker{Store: c, Owner: "new", Build: factory(p, q)}
+	if err := second.Process(t.Context(), "run1"); err != nil {
+		t.Fatal(err)
+	}
+	result, err := worker.ReadResult(t.Context(), c, "run1")
+	if err != nil || result.Status != "COMPLETED" {
+		t.Fatalf("%+v %v", result, err)
+	}
+	if len(result.Evidence) < len(job.Request.Services) {
+		t.Fatalf("evidence=%d", len(result.Evidence))
+	}
+	// Five services in all, and the query whose result was committed before the crash is not repeated.
+	if q.calls-queriesBefore >= len(job.Request.Services) {
+		t.Fatalf("queries before=%d after=%d", queriesBefore, q.calls)
+	}
+}
