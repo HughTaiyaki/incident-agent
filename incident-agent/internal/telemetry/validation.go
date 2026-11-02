@@ -42,7 +42,7 @@ func ValidateRecord(record Record, q Query, policy Policy) error {
 			"from", "to", "state", "step", "replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id"},
 		"span": {"duration_us", "operation", "error", "error.type", "otel.status_code", "rpc.system", "rpc.service",
 			"rpc.method", "messaging.operation", "messaging.message.id", "order.no", "operation_id", "payment.id"},
-		"trace_summary": {"visible_spans"},
+		"trace_summary": {"visible_spans", "error_spans"},
 	}
 	for key, value := range record.Fields {
 		if !slices.Contains(allowed[record.Type], key) || !fieldPattern.MatchString(value) {

@@ -102,9 +102,20 @@ func (c *Client) traces(data []byte, result *telemetry.Result) error {
 		}
 		if q.Kind == "traces" {
 			sort.Slice(records, func(i, j int) bool { return records[i].At.Before(records[j].At) })
+			fields := map[string]string{"visible_spans": strconv.Itoa(len(records))}
+			failed := 0
+			for _, record := range records {
+				if record.Fields["error"] != "" || record.Fields["otel.status_code"] != "" {
+					failed++
+				}
+			}
+			// A search result must say which trace failed, or opening one is a blind choice.
+			if failed > 0 {
+				fields["error_spans"] = strconv.Itoa(failed)
+			}
 			result.Records = append(result.Records, telemetry.Record{
 				Type: "trace_summary", At: records[0].At, Service: q.Service, Environment: q.Environment, TraceID: tr.TraceID,
-				Fields: map[string]string{"visible_spans": strconv.Itoa(len(records))},
+				Fields: fields,
 			})
 			continue
 		}

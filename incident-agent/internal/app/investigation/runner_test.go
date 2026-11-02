@@ -175,6 +175,34 @@ func TestExecute(t *testing.T) {
 			t.Fatalf("%+v %+v", result.Report, result.Steps)
 		}
 	})
+	t.Run("query inherits scope but cannot widen it", func(t *testing.T) {
+		var got []telemetry.Query
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			switch v.Step {
+			case 1:
+				return raw(Decision{Kind: "query", Query: &telemetry.Query{Kind: "logs", Service: "order-service"}}), nil
+			case 2:
+				other := query()
+				other.Environment = "experiment"
+				return raw(Decision{Kind: "query", Query: &other}), nil
+			case 3:
+				wider := query()
+				wider.Start = wider.Start.Add(-time.Hour)
+				return raw(Decision{Kind: "query", Query: &wider}), nil
+			}
+			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			got = append(got, q)
+			return observation(q, "1"), nil
+		}))
+		r := request()
+		if len(got) != 1 || got[0].Environment != r.Environment || !got[0].Start.Equal(r.Start) || !got[0].End.Equal(r.End) {
+			t.Fatalf("%+v", got)
+		}
+		if result.Steps[1].Outcome != "QUERY_REJECTED" || result.Steps[2].Outcome != "QUERY_REJECTED" {
+			t.Fatalf("%+v", result.Steps)
+		}
+	})
 	t.Run("failed query may retry within the limit", func(t *testing.T) {
 		calls := 0
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {

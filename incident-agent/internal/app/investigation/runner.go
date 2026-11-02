@@ -186,7 +186,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			}
 			continue
 		} else {
-			q, queryErr := policy.Normalize(*decision.Query)
+			q, queryErr := policy.Normalize(withRequestScope(*decision.Query, request))
 			within := !q.Start.Before(request.Start) && !q.End.After(request.End)
 			canonical, _ := json.Marshal(q)
 			key := string(canonical)
@@ -296,6 +296,21 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 // maxReportRejections leaves two chances to repair a report. Real models get report
 // shape wrong often enough that one failure should not cost the whole investigation.
 const maxReportRejections = 3
+
+// withRequestScope fills what a run fixes anyway. Scope checks still apply afterwards, and
+// a model that names another environment or a wider window is still refused.
+func withRequestScope(q telemetry.Query, request Request) telemetry.Query {
+	if q.Environment == "" {
+		q.Environment = request.Environment
+	}
+	if q.Start.IsZero() {
+		q.Start = request.Start
+	}
+	if q.End.IsZero() {
+		q.End = request.End
+	}
+	return q
+}
 
 func firstLook(evidence []telemetry.Result, q telemetry.Query) bool {
 	for _, entry := range evidence {

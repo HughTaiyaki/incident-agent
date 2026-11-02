@@ -272,3 +272,24 @@ func TestUndefinedMetricPointsAreCountedNotShown(t *testing.T) {
 		t.Fatalf("records=%d undefined=%d omitted=%d", len(input.Records), input.Queries[0].UndefinedPoints, input.OmittedRecords)
 	}
 }
+
+func TestFailingRecordsAreShownFirst(t *testing.T) {
+	q := query()
+	q.Kind, q.TraceID = "trace", strings.Repeat("a", 32)
+	result := telemetry.NewResult(q, "jaeger", "trace")
+	result.Quality.QueryOutcome = "SUCCEEDED"
+	for i := range 30 {
+		result.Records = append(result.Records, telemetry.Record{Type: "span", At: q.Start.Add(time.Duration(i) * time.Second), Service: q.Service,
+			Environment: q.Environment, TraceID: q.TraceID, Fields: map[string]string{"operation": "DB.QueryContext"}})
+	}
+	result.Records = append(result.Records, telemetry.Record{Type: "span", At: q.End.Add(-time.Second), Service: q.Service, Environment: q.Environment,
+		TraceID: q.TraceID, Fields: map[string]string{"operation": "ReserveInventory", "otel.status_code": "ERROR"}})
+	result.Finish()
+	data, _, _, err := buildModelInput(View{Request: request(), Phase: "INVESTIGATING", Evidence: []telemetry.Result{result}}, 16000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if input := decodeInput(t, data); input.Records[0].Fields["operation"] != "ReserveInventory" {
+		t.Fatalf("%+v", input.Records[0])
+	}
+}

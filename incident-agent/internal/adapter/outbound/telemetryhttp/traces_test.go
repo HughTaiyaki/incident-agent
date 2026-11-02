@@ -62,3 +62,33 @@ func TestTraceNotFoundAndMissingEnvironment(t *testing.T) {
 		t.Fatalf("missing environment accepted: %+v %v", result, err)
 	}
 }
+
+func TestTraceSearchMarksFailingTraces(t *testing.T) {
+	t.Parallel()
+	q := testQuery("traces")
+	failing, healthy := strings.Repeat("a", 32), strings.Repeat("b", 32)
+	client := newClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		process := `"processes":{"p1":{"serviceName":"order-service","tags":[{"key":"deployment.environment.name","value":"experiment"}]}}`
+		start := q.Start.UnixMicro() + 1
+		_, _ = fmt.Fprintf(w, `{"data":[
+		 {"traceID":"%s","spans":[{"traceID":"%s","spanID":"1111111111111111","operationName":"Reserve","startTime":%d,"duration":1,"processID":"p1","tags":[{"key":"otel.status_code","value":"ERROR"}]}],%s},
+		 {"traceID":"%s","spans":[{"traceID":"%s","spanID":"2222222222222222","operationName":"Commit","startTime":%d,"duration":1,"processID":"p1"}],%s}]}`,
+			failing, failing, start, process, healthy, healthy, start, process)
+	})
+	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	marks := map[string]string{}
+	for _, record := range result.Records {
+		marks[record.TraceID] = record.Fields["error_spans"]
+	}
+	if marks[failing] != "1" || marks[healthy] != "" {
+		t.Fatalf("%+v", result.Records)
+	}
+	for _, record := range result.Records {
+		if err := telemetry.ValidateRecord(record, result.Query, telemetry.DefaultPolicy()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
