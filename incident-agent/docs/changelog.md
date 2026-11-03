@@ -1,5 +1,9 @@
 # 文档维护记录
 
+## 2026-11-03 · 第二次复测
+
+- [结果](reports/0012-fixed-fault-evaluation.md#第二次复测harness-v10)：误报从 5/12 降到 0/12，但 Top-1 从 22/30 降到 17/33，未达标。原因是报告输出上限 1,500 Token 造成截断，以及 `lifecycle` 带来错误归因。
+
 ## 2026-11-03 · 降低误报，补重启信号（harness-v10）
 
 - `kind=trace` 没带 `service` 时不再拒绝。这是之前“QUERY_REJECTED 原因不明”的实际原因，并更正了原因码。
