@@ -12,6 +12,7 @@ import (
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/profilefile"
 	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 	"github.com/hughtaiyaki/incident-agent/internal/secretenv"
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
@@ -79,6 +80,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2
 	}
+	system, err := profilefile.Load(os.Getenv(profilefile.EnvVar))
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, err)
+		return 2
+	}
+	decider.UseFacts(system.FactsText())
 	// Reserve the name before any paid call; no retries can silently overwrite a previous run.
 	// #nosec G304 -- Operator-selected CLI path, not model or telemetry input.
 	out, err := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)

@@ -24,6 +24,7 @@ func TestSevereLogKindsAreDistinctAndMostSevereFirst(t *testing.T) {
 
 func TestMeasureCoverageCountsWhatTheRunDidNotSee(t *testing.T) {
 	failed := telemetry.Result{Status: "UNAVAILABLE", Query: telemetry.Query{Kind: "logs"}}
+	empty := telemetry.Result{Status: "EMPTY", Query: telemetry.Query{Kind: "logs"}}
 	cut := telemetry.Result{Query: telemetry.Query{Kind: "logs"}, Records: []telemetry.Record{logWith("w", "WARN", "late")}}
 	cut.Quality.Truncated = true
 	search := telemetry.Result{Query: telemetry.Query{Kind: "traces"}, Records: []telemetry.Record{
@@ -34,8 +35,8 @@ func TestMeasureCoverageCountsWhatTheRunDidNotSee(t *testing.T) {
 	opened := telemetry.Result{Query: telemetry.Query{Kind: "trace", TraceID: "open"}, Records: []telemetry.Record{
 		span("root", "a", "", 0, 900), span("c", "a", "root", 0, 800, "error", "true"),
 	}}
-	got := measureCoverage(View{Evidence: []telemetry.Result{failed, cut, search, opened}}, map[string]bool{})
-	want := Coverage{FailedQueries: 1, TruncatedQueries: 1, ErrorTracesNotOpened: 1, SevereLogsNotShown: 1, CallsMissingASide: 1}
+	got := measureCoverage(View{Evidence: []telemetry.Result{failed, empty, cut, search, opened}}, map[string]bool{})
+	want := Coverage{FailedQueries: 1, EmptyOrPartial: 1, TruncatedQueries: 1, ErrorTracesNotOpened: 1, SevereLogsNotShown: 1, CallsMissingASide: 1}
 	if got != want {
 		t.Fatalf("%+v", got)
 	}

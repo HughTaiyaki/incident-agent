@@ -60,6 +60,7 @@ func TestRun(t *testing.T) {
 	t.Setenv("INCIDENT_MODEL_ENDPOINT", server.URL+"/v1/chat/completions")
 	t.Setenv("INCIDENT_MODEL_API_KEY", "private-test-key")
 	t.Setenv("INCIDENT_MODEL_NAME", "fake-model")
+	t.Setenv("INCIDENT_SYSTEM_PROFILE_FILE", "../../deploy/profiles/goframeshop.json")
 	t.Setenv("INCIDENT_MODEL_CONTEXT_WINDOW", "16384")
 	out := filepath.Join(t.TempDir(), "run.json")
 	args := []string{"-request", requestFixture, "-fixture", evidenceFixture, "-out", out}
@@ -110,6 +111,7 @@ func TestRunConfigurationAndFailure(t *testing.T) {
 		t.Setenv("INCIDENT_MODEL_ENDPOINT", server.URL+"/chat")
 		t.Setenv("INCIDENT_MODEL_API_KEY", "private-key")
 		t.Setenv("INCIDENT_MODEL_NAME", "fake-model")
+		t.Setenv("INCIDENT_SYSTEM_PROFILE_FILE", "../../deploy/profiles/goframeshop.json")
 		t.Setenv("INCIDENT_MODEL_CONTEXT_WINDOW", "8192")
 		path := filepath.Join(t.TempDir(), "run.json")
 		var out bytes.Buffer

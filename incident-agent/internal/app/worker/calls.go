@@ -91,6 +91,11 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	if sweep := investigation.SweepDecision(view); sweep != nil {
 		return sweep, nil
 	}
+	hybrid := d.job.Flow == investigation.FlowHybrid
+	if hybrid && view.Phase != "SYNTHESIZING" {
+		decision, _, err := investigation.PlannedDecision(view)
+		return decision, err
+	}
 	id := fmt.Sprintf("model-%d", view.Step)
 	s := d.session
 	s.mu.Lock()
@@ -110,6 +115,11 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	m, err := investigation.NewModelDecider(d.provider, d.job.Model, d.job.Window)
 	if err != nil {
 		return nil, err
+	}
+	m.UseFacts(d.job.SystemFacts)
+	if hybrid {
+		m.UseRelations()
+		m.UseCoverage()
 	}
 	reserved := false
 	err = m.RestoreAccounting(calls, func(ctx context.Context, call investigation.ModelCall) error {

@@ -15,6 +15,7 @@ x-agent: &agent
   extra_hosts: ["host.docker.internal:host-gateway"]
   volumes:
     - redis-socket:/run/redis
+    - ./profiles:/etc/incident-agent/profiles:ro
   environment: &agent-env
     INCIDENT_REDIS_NETWORK: unix
     INCIDENT_REDIS_ADDRESS: /run/redis/redis.sock
@@ -24,6 +25,8 @@ x-agent: &agent
     INCIDENT_MODEL_NAME: ${INCIDENT_MODEL_NAME:?set in deploy/.env}
     INCIDENT_MODEL_CONTEXT_WINDOW: ${INCIDENT_MODEL_CONTEXT_WINDOW:?set in deploy/.env}
     INCIDENT_MODEL_API_PROFILE: ${INCIDENT_MODEL_API_PROFILE:-openai}
+    INCIDENT_SYSTEM_PROFILE_FILE: /etc/incident-agent/profiles/${INCIDENT_SYSTEM_PROFILE:?set in deploy/.env}.json
+    INCIDENT_INVESTIGATION_FLOW: ${INCIDENT_INVESTIGATION_FLOW:-agent}
     INCIDENT_PROMETHEUS_URL: ${INCIDENT_PROMETHEUS_URL:?set in deploy/.env}
     INCIDENT_LOKI_URL: ${INCIDENT_LOKI_URL:?set in deploy/.env}
     INCIDENT_JAEGER_URL: ${INCIDENT_JAEGER_URL:?set in deploy/.env}

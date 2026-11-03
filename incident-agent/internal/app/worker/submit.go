@@ -40,6 +40,11 @@ type Template struct {
 	FixtureDigest string
 	TelemetryID   string
 	Services      []string
+	Environments  []string
+	// Flow, SystemFacts and ProfileVersion are frozen into every job.
+	Flow           string
+	SystemFacts    string
+	ProfileVersion string
 }
 
 // Submitted reports the run behind an alert ID and whether this call created it.
@@ -61,7 +66,8 @@ func TelemetryIdentity(prometheus, loki, jaeger string) string {
 // Submit creates the run for an alert ID, or finds the one a retry already made.
 // The ID is derived from the alert ID, so concurrent retries resolve to one run.
 func Submit(ctx context.Context, store runstate.Store, template Template, input Submission, now time.Time, maxActive int) (Submitted, error) {
-	if !alertIDPattern.MatchString(input.AlertID) || !slices.Contains(template.Services, input.Service) || input.StartedAt.IsZero() {
+	if !alertIDPattern.MatchString(input.AlertID) || !slices.Contains(template.Services, input.Service) ||
+		!slices.Contains(template.Environments, input.Environment) || input.StartedAt.IsZero() {
 		return Submitted{}, investigation.ErrInvalidInput
 	}
 	if input.InitialWindowMinutes == 0 {
@@ -88,6 +94,7 @@ func Submit(ctx context.Context, store runstate.Store, template Template, input 
 		Request: investigation.Request{LogSweep: template.LogSweep, Service: input.Service, Services: slices.Clone(template.Services), Environment: input.Environment, Start: start, End: end, Summary: input.Summary},
 		Model:   template.Model, Window: template.Window, ProviderID: template.ProviderID,
 		FixtureDigest: template.FixtureDigest, TelemetryID: template.TelemetryID, InputDigest: telemetry.Hash(canonical),
+		Flow: template.Flow, SystemFacts: template.SystemFacts, ProfileVersion: template.ProfileVersion,
 	}
 	id := "inc-" + telemetry.Hash([]byte("manual\x00" + input.AlertID))[:32]
 	err = Enqueue(ctx, store, id, job, maxActive)

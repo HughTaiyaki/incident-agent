@@ -70,7 +70,13 @@ type Policy struct {
 	Environments []string
 }
 
-// DefaultPolicy is the initial single-deployment allowlist.
+var scopeName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$`)
+
+// ValidScopeName says whether a service or environment name is safe to place in a backend query.
+func ValidScopeName(name string) bool { return scopeName.MatchString(name) }
+
+// DefaultPolicy is the query tools' allowlist for the current mall deployment. Services under
+// investigation take theirs from the system profile.
 func DefaultPolicy() Policy {
 	return Policy{
 		Services:     []string{"gateway-h5", "order-service", "goods-service", "user-service", "payment-simulator"},

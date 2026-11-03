@@ -14,6 +14,7 @@
 | INCIDENT_MODEL_NAME | 部署者选定的实际模型名称；建议固定版本 |
 | INCIDENT_MODEL_CONTEXT_WINDOW | 实际模型上下文窗口，整数 4096–2000000；必须显式配置，本项目不推断 |
 | INCIDENT_MODEL_API_KEY | 认证密钥；非回环地址必填，回环本地模型可省略 |
+| INCIDENT_SYSTEM_PROFILE_FILE | [系统配置档](system-profile.md)路径，必须显式配置 |
 | INCIDENT_MODEL_API_PROFILE | 请求形状：`openai`（默认）或 `deepseek`，见第 2 节；API 与 Worker 必须一致 |
 
 配置后执行：

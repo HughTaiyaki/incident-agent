@@ -15,6 +15,7 @@ import (
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/profilefile"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/telemetryhttp"
 	"github.com/hughtaiyaki/incident-agent/internal/app/capture"
 	"github.com/hughtaiyaki/incident-agent/internal/app/evaluation"
@@ -45,6 +46,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	dir := flags.String("dir", "", "sample directory (created by capture and derive)")
 	from := flags.String("from", "", "derive: sample directory to start from")
 	drop := flags.String("drop", "", "derive: comma-separated query kinds to remove")
+	rename := flags.String("rename", "", "derive: comma-separated old=new service names, for testing that results do not depend on names")
 	startText := flags.String("start", "", "capture: window start, RFC3339")
 	endText := flags.String("end", "", "capture: window end, RFC3339")
 	environment := flags.String("environment", "experiment", "capture: telemetry environment")
@@ -67,7 +69,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "capture":
 		err = captureSample(ctx, *dir, *startText, *endText, *environment, *upstream, stdout)
 	case "derive":
-		err = deriveSample(*from, *dir, strings.Split(*drop, ","), stdout)
+		err = deriveSample(*from, *dir, strings.Split(*drop, ","), *rename, stdout)
 	case "investigate":
 		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowAgent, stdout)
 	case "hybrid":
@@ -203,7 +205,7 @@ func readSample(dir string) (telemetry.Bundle, evaluation.Manifest, investigatio
 	return bundle, manifest, request, nil
 }
 
-func deriveSample(from, dir string, drop []string, stdout io.Writer) error {
+func deriveSample(from, dir string, drop []string, rename string, stdout io.Writer) error {
 	if from == "" {
 		return errors.New("from is required")
 	}
@@ -211,8 +213,24 @@ func deriveSample(from, dir string, drop []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	derived, err := evaluation.Derive(bundle, drop)
-	if err != nil {
+	derived, err := bundle, error(nil)
+	if rename != "" {
+		names := map[string]string{}
+		for _, pair := range strings.Split(rename, ",") {
+			oldName, newName, ok := strings.Cut(pair, "=")
+			if !ok {
+				return errors.New("rename takes old=new pairs")
+			}
+			names[oldName] = newName
+		}
+		if derived, err = evaluation.RenameServices(bundle, names); err != nil {
+			return err
+		}
+		if request, err = evaluation.RenameRequest(request, names); err != nil {
+			return err
+		}
+		drop = nil
+	} else if derived, err = evaluation.Derive(bundle, drop); err != nil {
 		return err
 	}
 	// #nosec G703 -- Operator-selected CLI path, not model or telemetry input.
@@ -285,6 +303,10 @@ func investigate(ctx context.Context, dir string, attempts int, thinking, relati
 	if err != nil {
 		return err
 	}
+	system, err := profilefile.Load(os.Getenv(profilefile.EnvVar))
+	if err != nil {
+		return err
+	}
 	model := os.Getenv("INCIDENT_MODEL_NAME")
 	window, err := strconv.Atoi(os.Getenv("INCIDENT_MODEL_CONTEXT_WINDOW"))
 	if err != nil {
@@ -319,6 +341,7 @@ func investigate(ctx context.Context, dir string, attempts int, thinking, relati
 				return err
 			}
 		}
+		decider.UseFacts(system.FactsText())
 		if relations {
 			decider.UseRelations()
 		}

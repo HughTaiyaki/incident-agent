@@ -31,7 +31,7 @@ func (*fakeStore) Candidates(context.Context, int) ([]string, error) { return ni
 func testDeps(store *fakeStore) *Deps {
 	return &Deps{
 		Token: testToken, Store: store, MaxActive: 2,
-		Template:  worker.Template{Model: "m", Window: 32000, ProviderID: "p", TelemetryID: "t", Services: []string{"order-service", "user-service"}},
+		Template:  worker.Template{Model: "m", Window: 32000, ProviderID: "p", TelemetryID: "t", Services: []string{"order-service", "user-service"}, Environments: []string{"local", "experiment"}},
 		Readiness: func(context.Context) []string { return nil },
 		Now:       func() time.Time { return time.Date(2026, 10, 28, 7, 0, 0, 0, time.UTC) },
 	}

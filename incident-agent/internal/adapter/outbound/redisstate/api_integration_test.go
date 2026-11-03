@@ -26,7 +26,7 @@ func apiServer(t *testing.T, c *Client, limit int) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(httpapi.NewRouter(&httpapi.Deps{
 		Token: apiToken, Store: c, MaxActive: limit, Readiness: c.Readiness, Now: time.Now,
-		Template: worker.Template{Model: "test", Window: 32000, ProviderID: "test", TelemetryID: "backends", Services: []string{"gateway-h5", "order-service", "goods-service", "user-service", "payment-simulator"}},
+		Template: worker.Template{Model: "test", Window: 32000, ProviderID: "test", TelemetryID: "backends", Services: []string{"gateway-h5", "order-service", "goods-service", "user-service", "payment-simulator"}, Environments: []string{"local", "experiment"}},
 	}))
 	t.Cleanup(server.Close)
 	return server

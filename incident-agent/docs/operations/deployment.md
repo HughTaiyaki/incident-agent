@@ -29,6 +29,8 @@ sudo chown 65532:65532 deploy/secrets/incident_api_token deploy/secrets/incident
 sudo chmod 400 deploy/secrets/incident_api_token deploy/secrets/incident_model_api_key
 ```
 
+`deploy/.env` 必须设置 `INCIDENT_SYSTEM_PROFILE`，从旧版本升级时要补上这一项，否则不能启动。含义和可选项见[系统配置档](../development/system-profile.md)。升级时还在运行的任务没有冻结配置档内容，会在不带系统说明的情况下跑完，建议等它们结束再升级。
+
 检查 `deploy/.env` 后启动：
 
 ```bash

@@ -11,6 +11,7 @@ const severeLogLimit = 12
 // a model that has not seen a record cannot notice it is missing.
 type Coverage struct {
 	FailedQueries        int `json:"failed_queries"`
+	EmptyOrPartial       int `json:"empty_or_partial_queries"`
 	TruncatedQueries     int `json:"truncated_queries"`
 	ErrorTracesNotOpened int `json:"error_traces_not_opened"`
 	SevereLogsNotShown   int `json:"severe_log_kinds_not_shown"`
@@ -54,7 +55,11 @@ func measureCoverage(view View, shown map[string]bool) Coverage {
 		if entry.Query.Kind == "trace" {
 			opened[entry.Query.TraceID] = true
 		}
-		if entry.Status != "" && entry.Status != "AVAILABLE" {
+		switch entry.Status {
+		case "EMPTY", "PARTIAL":
+			coverage.EmptyOrPartial++
+		case "", "AVAILABLE":
+		default:
 			coverage.FailedQueries++
 		}
 		if entry.Quality.Truncated {

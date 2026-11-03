@@ -315,7 +315,7 @@ func TestWorkerCLIEndToEnd(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %.300s", err, out)
 	}
-	env := append(os.Environ(), "INCIDENT_REDIS_NETWORK=unix", "INCIDENT_REDIS_ADDRESS="+r.socket, "INCIDENT_REDIS_NAMESPACE=cli", "INCIDENT_REDIS_USERNAME=", "INCIDENT_REDIS_PASSWORD=", "INCIDENT_MODEL_ENDPOINT="+server.URL+"/chat", "INCIDENT_MODEL_NAME=test", "INCIDENT_MODEL_CONTEXT_WINDOW=32000", "INCIDENT_MODEL_API_KEY=", "INCIDENT_MAX_ACTIVE_RUNS=")
+	env := append(os.Environ(), "INCIDENT_REDIS_NETWORK=unix", "INCIDENT_REDIS_ADDRESS="+r.socket, "INCIDENT_REDIS_NAMESPACE=cli", "INCIDENT_REDIS_USERNAME=", "INCIDENT_REDIS_PASSWORD=", "INCIDENT_MODEL_ENDPOINT="+server.URL+"/chat", "INCIDENT_SYSTEM_PROFILE_FILE=deploy/profiles/goframeshop.json", "INCIDENT_MODEL_NAME=test", "INCIDENT_MODEL_CONTEXT_WINDOW=32000", "INCIDENT_MODEL_API_KEY=", "INCIDENT_MAX_ACTIVE_RUNS=")
 	attempt := func(limit string, args ...string) ([]byte, int) {
 		t.Helper()
 		// #nosec G204 -- Fixed built binary and test-owned argument list; no shell.
@@ -505,5 +505,80 @@ func TestWorkerRenewsLeaseAndShutdownRemainsRecoverable(t *testing.T) {
 	after := execute(t, c, Command{Action: "read", ID: "run1"}, "OK")
 	if replacement.calls != 0 || after.Tokens != state.Tokens || after.Status != "COMPLETED" {
 		t.Fatal("unknown external call was repeated")
+	}
+}
+
+// captureProvider records what the worker sends and always answers with an INCONCLUSIVE report.
+type captureProvider struct {
+	calls        int
+	instructions string
+	input        string
+}
+
+func (p *captureProvider) Complete(_ context.Context, req investigation.CompletionRequest) (investigation.CompletionResponse, error) {
+	p.calls++
+	p.instructions, p.input = req.Instructions, string(req.Input)
+	decision := `{"kind":"report","report":{"result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["x"],"next_actions":[],"recovery_assessment":"UNKNOWN"}}`
+	return investigation.CompletionResponse{Decision: json.RawMessage(decision), Usage: &investigation.ModelUsage{InputTokens: 10, OutputTokens: 5}}, nil
+}
+
+func TestHybridJobChoosesQueriesWithoutTheModelAndSurvivesTakeover(t *testing.T) {
+	r := newRedis(t)
+	c := clientFor(t, r, "hybrid")
+	job, _, q := workerInputs(t)
+	job.Request.LogSweep = true
+	job.Flow, job.SystemFacts, job.ProfileVersion = investigation.FlowHybrid, "System facts: frozen knowledge.\n", "v1"
+	if err := worker.Enqueue(t.Context(), c, "run1", job, testMaxActive); err != nil {
+		t.Fatal(err)
+	}
+	// Lose the worker after its first planned query: the next one must carry on from the evidence.
+	p := &captureProvider{}
+	first := worker.Worker{Store: &lostAckStore{Store: c, action: "commit", operation: "tool-2"}, Owner: "old", Build: factory(p, q)}
+	if err := first.Process(t.Context(), "run1"); !errors.Is(err, investigation.ErrPersistence) {
+		t.Fatal(err)
+	}
+	if p.calls != 0 {
+		t.Fatalf("model chose a query: %d", p.calls)
+	}
+	expireLease(t, r, "hybrid")
+	queriesBefore := q.calls
+	replacement := worker.Worker{Store: c, Owner: "new", Build: factory(p, q)}
+	if err := replacement.Process(t.Context(), "run1"); err != nil {
+		t.Fatal(err)
+	}
+	after := execute(t, c, Command{Action: "read", ID: "run1"}, "OK")
+	if after.Status != "COMPLETED" || p.calls != 1 || q.calls <= queriesBefore {
+		t.Fatalf("status=%s model=%d queries=%d->%d", after.Status, p.calls, queriesBefore, q.calls)
+	}
+	if !strings.Contains(p.instructions, "frozen knowledge") || !strings.Contains(p.instructions, "call_relations") || !strings.Contains(p.input, `"coverage":{`) {
+		t.Fatalf("report call: %s\n%s", p.instructions, p.input)
+	}
+}
+
+func TestAgentJobKeepsItsOriginalBehaviour(t *testing.T) {
+	r := newRedis(t)
+	c := clientFor(t, r, "agentflow")
+	job, _, q := workerInputs(t)
+	job.SystemFacts = "System facts: frozen knowledge.\n"
+	if err := worker.Enqueue(t.Context(), c, "run1", job, testMaxActive); err != nil {
+		t.Fatal(err)
+	}
+	p := &captureProvider{}
+	w := worker.Worker{Store: c, Owner: "w", Build: factory(p, q)}
+	if err := w.Process(t.Context(), "run1"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p.instructions, "frozen knowledge") || strings.Contains(p.instructions, "call_relations") || strings.Contains(p.input, `"coverage":{`) {
+		t.Fatalf("%s\n%s", p.instructions, p.input)
+	}
+}
+
+func TestUnknownFlowIsRefused(t *testing.T) {
+	r := newRedis(t)
+	c := clientFor(t, r, "badflow")
+	job, _, _ := workerInputs(t)
+	job.Flow = "other"
+	if err := worker.Enqueue(t.Context(), c, "run1", job, testMaxActive); !errors.Is(err, investigation.ErrInvalidInput) {
+		t.Fatal(err)
 	}
 }

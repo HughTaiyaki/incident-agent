@@ -1,0 +1,41 @@
+{
+  "version": "goframeshop-2f25dc5",
+  "source": "GoFrame mall at upstream 2f25dc5a6fd10cca19323389d39586ff794526f3",
+  "services": [
+    "gateway-h5",
+    "order-service",
+    "goods-service",
+    "user-service",
+    "payment-simulator"
+  ],
+  "environments": [
+    "local",
+    "experiment"
+  ],
+  "facts": [
+    {
+      "kind": "service_map",
+      "text": "goods-service hosts the inventory, goods, cart and category gRPC services; order-service hosts order, payment and refund; payment-simulator is the external payment provider."
+    },
+    {
+      "kind": "field_meaning",
+      "text": "replayed=true means a stored result of the same operation_id was returned; replayed=false means this call executed the operation."
+    },
+    {
+      "kind": "business_outcome",
+      "text": "Inventory outcomes INSUFFICIENT_STOCK, GOODS_UNAVAILABLE, ALREADY_RELEASED and STATE_CONFLICT are business answers, not technical failures by themselves."
+    },
+    {
+      "kind": "event_meaning",
+      "text": "message.redelivered means a consumer saw an event it had already processed and acknowledged it."
+    },
+    {
+      "kind": "error_code",
+      "text": "Error 1062 on a database write inside CreateOrder means a concurrent submit of the same request lost the race and is answered with the existing order."
+    },
+    {
+      "kind": "deadline",
+      "text": "A record saying context deadline exceeded on an inventory call means order-service's 800 ms deadline passed, so the outcome is unknown and the worker retries."
+    }
+  ]
+}

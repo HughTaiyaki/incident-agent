@@ -41,7 +41,7 @@
 }
 ```
 
-未知字段直接拒绝。service 必须在服务端白名单内，environment 为 local 或 experiment。调查窗口是 `started_at` 前 `initial_window_minutes`（默认 10，最大 50）到后 5 分钟，并裁到当前时刻。summary 最多 2,000 字符，含疑似凭据的内容被拒绝；它会原样发给模型。
+未知字段直接拒绝。service 和 environment 必须在[系统配置档](system-profile.md)的范围内。调查窗口是 `started_at` 前 `initial_window_minutes`（默认 10，最大 50）到后 5 分钟，并裁到当前时刻。summary 最多 2,000 字符，含疑似凭据的内容被拒绝；它会原样发给模型。
 
 `GET /metrics` 使用相同的 Token，返回 Prometheus 文本格式，Redis 不可用时仍返回 200 和 `incident_redis_up 0`。指标含义见[部署指南](../operations/deployment.md#4-监控)。
 

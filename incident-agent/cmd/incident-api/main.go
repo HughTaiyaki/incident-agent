@@ -15,11 +15,12 @@ import (
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/inbound/httpapi"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/profilefile"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/redisstate"
 	"github.com/hughtaiyaki/incident-agent/internal/app"
+	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 	"github.com/hughtaiyaki/incident-agent/internal/app/worker"
 	"github.com/hughtaiyaki/incident-agent/internal/secretenv"
-	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
 const (
@@ -27,6 +28,8 @@ const (
 	// Plain HTTP carries the bearer token, so only local listeners are the default.
 	defaultBind   = "127.0.0.1"
 	minTokenBytes = 32
+	// flowEnvVar chooses who picks the queries of new runs; unset keeps the agent flow.
+	flowEnvVar = "INCIDENT_INVESTIGATION_FLOW"
 )
 
 func main() {
@@ -131,13 +134,22 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	system, err := profilefile.Load(getenv(profilefile.EnvVar))
+	if err != nil {
+		return nil, nil, errors.Join(err, store.Close())
+	}
+	flow := getenv(flowEnvVar)
+	if !investigation.ValidFlow(flow) {
+		return nil, nil, errors.Join(errors.New("unknown "+flowEnvVar), store.Close())
+	}
 	deps := &httpapi.Deps{
 		Token: token, Store: store, MaxActive: maxActive, Readiness: store.Readiness,
 		Now: time.Now, Stats: store.Stats,
 		Template: worker.Template{
 			LogSweep: true,
 			Model:    model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
-			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: telemetry.DefaultPolicy().Services,
+			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: system.Services, Environments: system.Environments,
+			Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version,
 		},
 	}
 	return deps, func() { _ = store.Close() }, nil

@@ -53,8 +53,9 @@ type patternGroup struct {
 // SummarizeLogs validates a frozen query result, then derives deterministic bounded summaries.
 // It never queries a backend, infers absent fields or turns missing data into a healthy result.
 func SummarizeLogs(entry telemetry.Result) (LogPatterns, error) {
-	q, err := telemetry.DefaultPolicy().Normalize(entry.Query)
-	if err != nil || q.Kind != "logs" || !validResult(entry, q, telemetry.DefaultPolicy()) {
+	policy := telemetry.Policy{Services: []string{entry.Query.Service}, Environments: []string{entry.Query.Environment}}
+	q, err := policy.Normalize(entry.Query)
+	if err != nil || q.Kind != "logs" || !validResult(entry, q, policy) {
 		return LogPatterns{}, errors.New("invalid log evidence for aggregation")
 	}
 	quality := entry.Quality

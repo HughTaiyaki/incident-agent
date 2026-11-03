@@ -16,6 +16,7 @@ export INCIDENT_REDIS_NAMESPACE=incidentdev
 export INCIDENT_MODEL_ENDPOINT=https://your-provider.example/v1/chat/completions
 export INCIDENT_MODEL_NAME=your-configured-model
 export INCIDENT_MODEL_CONTEXT_WINDOW=32000
+export INCIDENT_SYSTEM_PROFILE_FILE=deploy/profiles/goframeshop.json
 export INCIDENT_MAX_ACTIVE_RUNS=2   # 占位；取值见下文“准入与过载”
 
 ./bin/incident-worker -mode enqueue -id investigation-001 \

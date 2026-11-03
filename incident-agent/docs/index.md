@@ -15,6 +15,7 @@
 | 如何调用调查 API | [API 指南](development/http-api.md) | 目标接口全集见调查协议 §2 |
 | 当前能运行什么 | [README](../README.md) | 要修改实现时，再定位代码和当前任务 |
 | 如何查询遥测、导出和回放 | [查询 Adapter 使用指南](integration/query-adapters.md) | 实测范围与缺口见[接入报告](reports/0002-readonly-integration.md) |
+| 如何适配系统、选择调查流程 | [系统配置档](development/system-profile.md) | 当前只有商城的配置档 |
 | 如何配置模型与核查预算 | [Provider 指南](development/model-provider.md) | [任务 0005](../tasks/0005-model-boundary.md)明确当前生产化边界 |
 | 日志怎样分组与核查 | [日志聚合指南](development/log-patterns.md) | 范围见[任务 0004](../tasks/0004-log-patterns.md)，源码与测试见改动报告 |
 | 运行或修改调查内核 | [离线 Harness 指南](development/offline-investigation.md) | 开发范围见[任务 0003](../tasks/0003-offline-investigation.md)，真实供应商验收与持久化另行推进 |

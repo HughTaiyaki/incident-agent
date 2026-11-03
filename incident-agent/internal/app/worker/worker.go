@@ -30,6 +30,11 @@ type Job struct {
 	// InputDigest identifies an API submission, so a retry can be told from a different request.
 	InputDigest string `json:"input_digest,omitempty"`
 	ProviderID  string `json:"provider_id"`
+	// Flow says who chooses the queries. SystemFacts is the system's knowledge exactly as
+	// the run started with it, so recovery cannot change what the model is told.
+	Flow           string `json:"flow,omitempty"`
+	SystemFacts    string `json:"system_facts,omitempty"`
+	ProfileVersion string `json:"profile_version,omitempty"`
 }
 
 // Factory verifies frozen configuration and returns per-run dependencies.
@@ -67,6 +72,9 @@ var errRunExists = errors.New("run already exists")
 func Enqueue(ctx context.Context, store runstate.Store, id string, job Job, maxActive int) error {
 	if _, err := investigation.ValidateRequest(job.Request); err != nil {
 		return err
+	}
+	if !investigation.ValidFlow(job.Flow) {
+		return investigation.ErrInvalidInput
 	}
 	if job.Model == "" || job.Window < 4096 || job.Window > 2000000 || job.ProviderID == "" || (job.FixtureDigest == "") == (job.TelemetryID == "") || maxActive < 1 || maxActive > MaxActiveLimit {
 		return investigation.ErrInvalidInput

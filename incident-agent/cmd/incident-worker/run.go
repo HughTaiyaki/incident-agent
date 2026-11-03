@@ -15,6 +15,7 @@ import (
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/modelhttp"
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/profilefile"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/redisstate"
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/telemetryhttp"
 	"github.com/hughtaiyaki/incident-agent/internal/app/capture"
@@ -26,6 +27,9 @@ import (
 
 // exitOverloaded lets callers retry a refused enqueue; nothing was written.
 const exitOverloaded = 3
+
+// flowEnvVar chooses who picks the queries of new runs; unset keeps the agent flow.
+const flowEnvVar = "INCIDENT_INVESTIGATION_FLOW"
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("incident-worker", flag.ContinueOnError)
@@ -117,7 +121,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return fail(errors.New("explicit INCIDENT_MAX_ACTIVE_RUNS required"))
 		}
 	}
-	src, err := openSource(*live, *fixturePath)
+	system, err := profilefile.Load(os.Getenv(profilefile.EnvVar))
+	if err != nil {
+		return fail(err)
+	}
+	src, err := openSource(*live, *fixturePath, system.Policy())
 	if err != nil {
 		return fail(err)
 	}
@@ -159,7 +167,14 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		if err := investigation.Decode(data, &request); err != nil {
 			return fail(err)
 		}
-		job := worker.Job{Request: request, Model: model, Window: window, FixtureDigest: src.digest, TelemetryID: src.telemetryID, ProviderID: providerID}
+		flow := os.Getenv(flowEnvVar)
+		if !investigation.ValidFlow(flow) {
+			return fail(errors.New("unknown " + flowEnvVar))
+		}
+		if !system.Allows(request) {
+			return fail(errors.New("request is outside the system profile"))
+		}
+		job := worker.Job{Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version, Request: request, Model: model, Window: window, FixtureDigest: src.digest, TelemetryID: src.telemetryID, ProviderID: providerID}
 		if err := worker.Enqueue(ctx, store, *id, job, maxActive); err != nil {
 			fail(err)
 			if errors.Is(err, worker.ErrOverloaded) {
@@ -184,6 +199,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		policy, err := investigation.ValidateRequest(job.Request)
 		if err != nil {
 			return nil, nil, err
+		}
+		if !system.Allows(job.Request) {
+			return nil, nil, errors.New("job is outside the system profile")
 		}
 		querier, err := src.querier(policy)
 		return provider, querier, err
@@ -215,7 +233,7 @@ type telemetrySource struct {
 	close       func()
 }
 
-func openSource(live bool, fixturePath string) (telemetrySource, error) {
+func openSource(live bool, fixturePath string, policy telemetry.Policy) (telemetrySource, error) {
 	if !live {
 		// #nosec G304 -- Operator-selected CLI path, not model or telemetry input.
 		file, err := os.Open(fixturePath)
@@ -236,7 +254,7 @@ func openSource(live bool, fixturePath string) (telemetrySource, error) {
 	if prometheus == "" || loki == "" || jaeger == "" {
 		return telemetrySource{}, errors.New("explicit INCIDENT_PROMETHEUS_URL, INCIDENT_LOKI_URL and INCIDENT_JAEGER_URL required")
 	}
-	client, err := telemetryhttp.New(telemetryhttp.Config{PrometheusURL: prometheus, LokiURL: loki, JaegerURL: jaeger, Policy: telemetry.DefaultPolicy()})
+	client, err := telemetryhttp.New(telemetryhttp.Config{PrometheusURL: prometheus, LokiURL: loki, JaegerURL: jaeger, Policy: policy})
 	if err != nil {
 		return telemetrySource{}, err
 	}

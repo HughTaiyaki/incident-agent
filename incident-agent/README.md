@@ -16,6 +16,7 @@
 - **在线持久调查：**[任务 0009](tasks/0009-online-investigation.md)为 `incident-worker` 增加 `-live`，已用本地模拟服务验证失败与恢复路径，并在本机真实后端上配合脚本模型跑通；在线后端加 DeepSeek 的完整运行、恢复和遮蔽均已验证；**诊断效果未评测**。
 - **HTTP 入口：**[任务 0010](tasks/0010-http-entry.md)提供 Token 校验、按 alert_id 幂等和真实 readyz，本机验证和远端 CI 通过。
 - **部署与运维：**[任务 0011](tasks/0011-deployment-operations.md)提供镜像、Compose、指标、告警和[值班手册](docs/operations/runbook.md)，用法见[部署指南](docs/operations/deployment.md)；尚未在正式环境部署。后续按[生产路线](docs/development/production-roadmap.md)推进运维。
+- **系统配置：** 被诊断系统的知识、服务和环境范围放在[系统配置档](docs/development/system-profile.md)，`INCIDENT_SYSTEM_PROFILE_FILE` 必须配置。调查流程默认是 `agent`，可用 `INCIDENT_INVESTIGATION_FLOW=hybrid` 开启程序驱动的混合流程。
 - **待完成：**任务 0002 的固定版本故障样本与人工验收，以及诊断效果达标（[第四次复测勉强过线，新 bug 只对一半](docs/reports/0012-fixed-fault-evaluation.md#第四次复测harness-v14)，[固定流程对照](docs/reports/0013-fixed-flow-comparison.md)已完成）、Incident 去重、生产压测、效果评测与 React/SSE 工作台。商城代码暂不修改，必要调整先提醒用户审查。
 
 不再建设另一套小型商城；不开发自研 KV；Trace 后端统一复用商城 Jaeger，不部署 Tempo。Agent 的持久 Redis 必须独立于商城的无持久化缓存 Redis。

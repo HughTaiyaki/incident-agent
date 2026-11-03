@@ -200,7 +200,12 @@ func ReadBundle(reader io.Reader) (Bundle, error) {
 	if b.Origin != "live" && b.Origin != "synthetic" && b.Origin != "replay" {
 		return Bundle{}, errors.New("invalid bundle origin")
 	}
-	policy := DefaultPolicy()
+	// A bundle is frozen evidence of one deployment, so its own scope is what it is checked
+	// against. Whether that scope may be investigated is decided by whoever replays it.
+	policy, err := bundleScope(b.Entries)
+	if err != nil {
+		return Bundle{}, err
+	}
 	for _, entry := range b.Entries {
 		q, err := policy.Normalize(entry.Query)
 		if err != nil {
@@ -281,4 +286,31 @@ func anonymizeQuery(canonical string, replacements map[string]string) string {
 		values.Set("query", strings.NewReplacer(pairs...).Replace(expression))
 	}
 	return path + "?" + values.Encode()
+}
+
+func bundleScope(entries []Result) (Policy, error) {
+	policy := Policy{}
+	add := func(service, environment string) bool {
+		if !ValidScopeName(service) || !ValidScopeName(environment) {
+			return false
+		}
+		if !slices.Contains(policy.Services, service) {
+			policy.Services = append(policy.Services, service)
+		}
+		if !slices.Contains(policy.Environments, environment) {
+			policy.Environments = append(policy.Environments, environment)
+		}
+		return true
+	}
+	for _, entry := range entries {
+		if !add(entry.Query.Service, entry.Query.Environment) {
+			return Policy{}, ErrInvalidQuery
+		}
+		for _, record := range entry.Records {
+			if !add(record.Service, record.Environment) {
+				return Policy{}, ErrResponse
+			}
+		}
+	}
+	return policy, nil
 }

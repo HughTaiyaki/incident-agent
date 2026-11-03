@@ -385,7 +385,7 @@ func TestWorkerCLILiveEndToEnd(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v %.300s", err, out)
 	}
-	base := append(os.Environ(), "INCIDENT_REDIS_NETWORK=unix", "INCIDENT_REDIS_ADDRESS="+r.socket, "INCIDENT_REDIS_NAMESPACE=livecli", "INCIDENT_REDIS_USERNAME=", "INCIDENT_REDIS_PASSWORD=", "INCIDENT_MODEL_ENDPOINT="+model.URL+"/chat", "INCIDENT_MODEL_NAME=test", "INCIDENT_MODEL_CONTEXT_WINDOW=32000", "INCIDENT_MODEL_API_KEY=", "INCIDENT_MAX_ACTIVE_RUNS=4")
+	base := append(os.Environ(), "INCIDENT_SYSTEM_PROFILE_FILE=deploy/profiles/goframeshop.json", "INCIDENT_REDIS_NETWORK=unix", "INCIDENT_REDIS_ADDRESS="+r.socket, "INCIDENT_REDIS_NAMESPACE=livecli", "INCIDENT_REDIS_USERNAME=", "INCIDENT_REDIS_PASSWORD=", "INCIDENT_MODEL_ENDPOINT="+model.URL+"/chat", "INCIDENT_MODEL_NAME=test", "INCIDENT_MODEL_CONTEXT_WINDOW=32000", "INCIDENT_MODEL_API_KEY=", "INCIDENT_MAX_ACTIVE_RUNS=4")
 	backends := []string{"INCIDENT_PROMETHEUS_URL=" + backend.URL, "INCIDENT_LOKI_URL=" + backend.URL, "INCIDENT_JAEGER_URL=" + backend.URL}
 	attempt := func(env []string, args ...string) ([]byte, int) {
 		t.Helper()

@@ -162,73 +162,44 @@ func (f providerFunc) Complete(ctx context.Context, r investigation.CompletionRe
 	return f(ctx, r)
 }
 
-func hybridNext(t *testing.T, evidence ...telemetry.Result) (*telemetry.Query, string) {
-	t.Helper()
-	view := fixedView(evidence...)
-	view.Evidence = append([]telemetry.Result{{Query: telemetry.Query{Kind: "metrics", Metric: fixedMetric}}, {Query: telemetry.Query{Kind: "traces", Service: "order-service"}}}, evidence...)
-	return nextHybridQuery(view)
-}
-
-func logEntry(truncated bool, records ...telemetry.Record) telemetry.Result {
-	entry := telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "a", Notable: true}, Records: records}
-	entry.Quality.Truncated = truncated
-	return entry
-}
-
-func logRecord(trace, severity string, extra ...string) telemetry.Record {
-	fields := map[string]string{"severity_text": severity}
-	for i := 0; i+1 < len(extra); i += 2 {
-		fields[extra[i]] = extra[i+1]
+func TestRenameServicesChangesEveryNameAndStillReplays(t *testing.T) {
+	q := telemetry.Query{Kind: "logs", Service: "order-service", Environment: "experiment", Start: start, End: end, Limit: 100}
+	entry := telemetry.NewResult(q, "loki", "logs?service=order-service")
+	entry.Quality.QueryOutcome = "SUCCEEDED"
+	entry.Records = []telemetry.Record{{Type: "log", At: start.Add(time.Minute), Service: "order-service", Environment: "experiment",
+		Fields: map[string]string{"severity_text": "WARN", "message": "call to order-service failed"}}}
+	entry.Finish()
+	bundle, err := telemetry.NewBundle("replay", "unknown", []telemetry.Result{entry})
+	if err != nil {
+		t.Fatal(err)
 	}
-	return telemetry.Record{Type: "log", TraceID: trace, Fields: fields}
-}
-
-func TestHybridGapRules(t *testing.T) {
-	first, _ := nextHybridQuery(fixedView())
-	if first == nil || first.Metric != fixedMetric {
-		t.Fatalf("%+v", first)
+	renamed, err := RenameServices(bundle, map[string]string{"order-service": "checkout"})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if q, _ := nextHybridQuery(fixedView(telemetry.Result{Query: telemetry.Query{Kind: "metrics", Metric: fixedMetric}})); q == nil || q.Kind != "traces" {
-		t.Fatalf("%+v", q)
+	encoded, err := json.Marshal(renamed)
+	if err != nil {
+		t.Fatal(err)
 	}
-	errorSummary := telemetry.Result{Query: telemetry.Query{Kind: "traces", Service: "a"}, Records: []telemetry.Record{
-		{Type: "trace_summary", TraceID: "ok", Fields: map[string]string{}}, {Type: "trace_summary", TraceID: "failed", Fields: map[string]string{"error_spans": "2"}},
-	}}
-	t.Run("cut-off sweep asks for errors once", func(t *testing.T) {
-		q, reason := hybridNext(t, logEntry(true, logRecord("x", "INFO")))
-		if q == nil || q.Severity != "ERROR" || reason != FillTruncatedLogs {
-			t.Fatalf("%+v %s", q, reason)
-		}
-		q, reason = hybridNext(t, logEntry(true, logRecord("x", "INFO")), telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "b", Severity: "ERROR"}})
-		if q == nil || q.Kind != "trace" || reason == FillTruncatedLogs {
-			t.Fatalf("%+v %s", q, reason)
-		}
-	})
-	t.Run("warning trace comes before a span-only failure", func(t *testing.T) {
-		q, reason := hybridNext(t, errorSummary, logEntry(false, logRecord("info", "INFO"), logRecord("warn", "WARN")))
-		if q == nil || q.TraceID != "warn" || reason != FillSevereLog {
-			t.Fatalf("%+v %s", q, reason)
-		}
-	})
-	t.Run("failed trace with no warning in the logs is opened", func(t *testing.T) {
-		q, reason := hybridNext(t, errorSummary, logEntry(false, logRecord("info", "INFO")))
-		if q == nil || q.TraceID != "failed" || reason != FillErrorTrace {
-			t.Fatalf("%+v %s", q, reason)
-		}
-	})
-	t.Run("retry without a failure on record opens its trace", func(t *testing.T) {
-		q, reason := hybridNext(t, logEntry(false, logRecord("info", "INFO"), logRecord("retry", "INFO", "attempt", "1")))
-		if q == nil || q.TraceID != "retry" || reason != FillRetryTrace {
-			t.Fatalf("%+v %s", q, reason)
-		}
-	})
-	t.Run("no gap falls back to any trace, then stops", func(t *testing.T) {
-		q, reason := hybridNext(t, logEntry(false, logRecord("info", "INFO")))
-		if q == nil || reason != FillDefaultTrace {
-			t.Fatalf("%+v %s", q, reason)
-		}
-		if q, _ = hybridNext(t, logEntry(false)); q != nil {
-			t.Fatalf("%+v", q)
-		}
-	})
+	if strings.Contains(string(encoded), "order-service") || renamed.Digest == bundle.Digest {
+		t.Fatalf("%s", encoded)
+	}
+	var buffer strings.Builder
+	if err = json.NewEncoder(&buffer).Encode(renamed); err != nil {
+		t.Fatal(err)
+	}
+	read, err := telemetry.ReadBundle(strings.NewReader(buffer.String()))
+	if err != nil || read.Entries[0].Query.Service != "checkout" {
+		t.Fatalf("%v", err)
+	}
+	if strings.Contains(bundle.Entries[0].Records[0].Service, "checkout") {
+		t.Fatal("original bundle changed")
+	}
+	request, err := RenameRequest(investigation.Request{Service: "order-service", Services: []string{"order-service", "goods-service"}}, map[string]string{"order-service": "checkout", "goods-service": "ledger"})
+	if err != nil || request.Service != "checkout" || request.Services[1] != "ledger" {
+		t.Fatalf("%+v %v", request, err)
+	}
+	if _, err = RenameServices(bundle, map[string]string{"order-service": "bad name"}); err == nil {
+		t.Fatal("unsafe name accepted")
+	}
 }

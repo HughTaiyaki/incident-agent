@@ -48,7 +48,11 @@ func ValidateRequest(r Request) (telemetry.Policy, error) {
 			return telemetry.Policy{}, ErrInvalidInput
 		}
 		seen[service] = true
-		_, err := telemetry.DefaultPolicy().Normalize(telemetry.Query{Kind: "logs", Service: service, Environment: r.Environment, Start: r.Start, End: r.End})
+		// Which names are allowed is the deployment's choice; see SystemProfile.
+		if !telemetry.ValidScopeName(service) || !telemetry.ValidScopeName(r.Environment) {
+			return telemetry.Policy{}, ErrInvalidInput
+		}
+		_, err := telemetry.Policy{Services: []string{service}, Environments: []string{r.Environment}}.Normalize(telemetry.Query{Kind: "logs", Service: service, Environment: r.Environment, Start: r.Start, End: r.End})
 		if err != nil {
 			return telemetry.Policy{}, ErrInvalidInput
 		}

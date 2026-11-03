@@ -132,6 +132,7 @@ type ModelDecider struct {
 	counter   TokenCounter
 	relations bool
 	coverage  bool
+	facts     string
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -154,8 +155,11 @@ func (m *ModelDecider) UseRelations() { m.relations = true }
 // not see. Only evaluation sets it, until a comparison shows it helps.
 func (m *ModelDecider) UseCoverage() { m.coverage = true }
 
+// UseFacts sets the text from SystemProfile.FactsText, which explains this system's records.
+func (m *ModelDecider) UseFacts(facts string) { m.facts = facts }
+
 func (m *ModelDecider) instructions(phase string) string {
-	text := instructionsFor(phase)
+	text := instructionsFor(phase, m.facts)
 	if phase != "SYNTHESIZING" {
 		return text
 	}
