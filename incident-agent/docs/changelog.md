@@ -1,5 +1,9 @@
 # 文档维护记录
 
+## 2026-11-03 · 服务改名测试
+
+- [结果](reports/0013-hybrid-flow-comparison.md#服务改名测试工程接入后)：6 份开发样本改名后结论没有明显变化；去掉系统说明后也几乎不变，只有 N1 不再说出并发提交，同时也不再写没有依据的“沿用已有订单”。只改了服务名，不能说明换一个系统也有效。
+
 ## 2026-11-03 · 系统配置档和混合流程接入（默认不变）
 
 - 用户决定转做工程。商城知识和服务名单移到 `deploy/profiles/goframeshop.json`，`INCIDENT_SYSTEM_PROFILE_FILE` 必须显式配置，**这是部署上的不兼容变更**；基准测试确认提示词不变。混合流程可用 `INCIDENT_INVESTIGATION_FLOW=hybrid` 开启，默认仍是 `agent`。修正覆盖检查把空结果算作失败查询。详见[系统配置档](development/system-profile.md)，其中列出了仍和商城绑定的部分。

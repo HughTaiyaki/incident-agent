@@ -42,7 +42,7 @@
 - **服务名单可配置：** 请求校验不再写死商城的服务名，范围由配置档决定。
 - **混合流程接入 Worker 和 API：** `INCIDENT_INVESTIGATION_FLOW=hybrid` 开启，默认仍是 `agent`。接管后从已保存的证据接着算下一步。
 - **覆盖检查修正：** 对照实验时 `failed_queries` 把返回空结果的查询也算了进去，几乎总是大于 0。现在分成 `failed_queries` 和 `empty_or_partial_queries`。两者都大于 0 时说明文字同样生效，所以预计不改变实验结果，但没有重跑验证。
-- **服务改名测试：** 规则层有确定性测试；`incident-eval derive -rename` 能生成改名样本。
+- **服务改名测试：** 规则层有确定性测试；`incident-eval derive -rename` 能生成改名样本。[真实模型的结果](../docs/reports/0013-hybrid-flow-comparison.md#服务改名测试工程接入后)：改名没有明显影响，去掉系统说明后 6 份样本的结论也几乎不变，只有 N1 不再说出并发提交。
 
 ### 3.1 工程修复
 
