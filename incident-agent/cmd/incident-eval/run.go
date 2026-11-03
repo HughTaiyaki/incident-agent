@@ -51,6 +51,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	upstream := flags.String("upstream-sha", "unknown", "capture: verified upstream revision")
 	attempts := flags.Int("attempts", 3, "investigate: repeated investigations of this sample")
 	thinking := flags.Bool("thinking", false, "investigate: keep model thinking on, with the longer limits it needs")
+	relations := flags.Bool("relations", false, "investigate, fixed: add computed call relations to the report call")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -68,9 +69,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "derive":
 		err = deriveSample(*from, *dir, strings.Split(*drop, ","), stdout)
 	case "investigate":
-		err = investigate(ctx, *dir, *attempts, *thinking, evaluation.FlowAgent, stdout)
+		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowAgent, stdout)
 	case "fixed":
-		err = investigate(ctx, *dir, *attempts, *thinking, evaluation.FlowFixed, stdout)
+		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowFixed, stdout)
 	case "sheet":
 		err = sheet(*dir, stdout)
 	default:
@@ -266,7 +267,7 @@ func (r *recorder) Complete(ctx context.Context, input investigation.CompletionR
 	return response, err
 }
 
-func investigate(ctx context.Context, dir string, attempts int, thinking bool, flow string, stdout io.Writer) error {
+func investigate(ctx context.Context, dir string, attempts int, thinking, relations bool, flow string, stdout io.Writer) error {
 	if attempts < 1 || attempts > 20 {
 		return errors.New("attempts must be between 1 and 20")
 	}
@@ -316,6 +317,9 @@ func investigate(ctx context.Context, dir string, attempts int, thinking bool, f
 				return err
 			}
 		}
+		if relations {
+			decider.UseRelations()
+		}
 		var flowDecider investigation.Decider = decider
 		if flow == evaluation.FlowFixed {
 			flowDecider = evaluation.FixedFlow{ModelDecider: decider}
@@ -325,7 +329,7 @@ func investigate(ctx context.Context, dir string, attempts int, thinking bool, f
 			return err
 		}
 		outcome := evaluation.NewOutcome(manifest.SampleID, attempt, bundle.Digest, model, result)
-		outcome.Flow, outcome.Calls = flow, recording.calls
+		outcome.Flow, outcome.Calls, outcome.Relations = flow, recording.calls, relations
 		if err = writeNew(path, outcome); err != nil {
 			return err
 		}

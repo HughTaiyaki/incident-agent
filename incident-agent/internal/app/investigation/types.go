@@ -53,6 +53,8 @@ type View struct {
 	Feedback    string             `json:"feedback"`
 	// TokensLeft is set by the model decider for its own context; it is not run state.
 	TokensLeft int `json:"-"`
+	// Relations is also the model decider's own context.
+	Relations []CallRelation `json:"-"`
 }
 
 // Decision permits exactly one query or report, never arbitrary commands or URLs.

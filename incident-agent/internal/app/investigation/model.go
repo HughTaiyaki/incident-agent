@@ -130,6 +130,7 @@ type ModelDecider struct {
 	calls     []ModelCall
 	tuning    ModelTuning
 	counter   TokenCounter
+	relations bool
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -144,12 +145,23 @@ func NewModelDecider(provider Provider, model string, contextWindow int) (*Model
 	return m, nil
 }
 
+// UseRelations adds computed call relations to the report call. Only evaluation sets it,
+// until a comparison shows it helps.
+func (m *ModelDecider) UseRelations() { m.relations = true }
+
+func (m *ModelDecider) instructions(phase string) string {
+	if m.relations && phase == "SYNTHESIZING" {
+		return instructionsFor(phase) + relationInstructions
+	}
+	return instructionsFor(phase)
+}
+
 // countInput sizes a prompt: exactly when the provider's tokenizer is known, otherwise from above.
 func (m *ModelDecider) countInput(phase string, input []byte) int {
 	if m.counter == nil {
-		return estimateInput(phase, input)
+		return estimateInput(m.instructions(phase), input)
 	}
-	return m.counter.CountPrompt(instructionsFor(phase), input) + countedInputMargin
+	return m.counter.CountPrompt(m.instructions(phase), input) + countedInputMargin
 }
 
 func (m *ModelDecider) estimatorName() string {
@@ -251,6 +263,9 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		return nil, ErrSynthesisRequired
 	}
 	view.TokensLeft = ModelTokenLimit - m.charged
+	if m.relations && view.Phase == "SYNTHESIZING" {
+		view.Relations = CallRelations(view.Evidence)
+	}
 	inputLimit := min(available-output, m.window*3/5-output)
 	prompt, omittedRecords, omittedQueries, err := buildCountedInput(view, inputLimit, m.countInput)
 	if err != nil {
@@ -261,7 +276,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	reserved := m.countInput(view.Phase, prompt) + output
 	call := ModelCall{Estimator: m.estimatorName(), ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
-		ContextDigest: telemetry.Hash(append([]byte(instructionsFor(view.Phase)), prompt...)), Reserved: reserved,
+		ContextDigest: telemetry.Hash(append([]byte(m.instructions(view.Phase)), prompt...)), Reserved: reserved,
 		Charged: reserved, Estimated: true, Status: "UNKNOWN", OmittedRecords: omittedRecords, OmittedQueries: omittedQueries}
 	if m.reserve != nil {
 		if err := m.reserve(ctx, call); err != nil {
@@ -270,7 +285,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	m.charged += reserved // Reservation occurs before any external call; unknown usage is never refunded.
 	m.calls = append(m.calls, call)
-	response, callErr := m.provider.Complete(ctx, CompletionRequest{Instructions: instructionsFor(view.Phase), Input: prompt, MaxOutputTokens: output})
+	response, callErr := m.provider.Complete(ctx, CompletionRequest{Instructions: m.instructions(view.Phase), Input: prompt, MaxOutputTokens: output})
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

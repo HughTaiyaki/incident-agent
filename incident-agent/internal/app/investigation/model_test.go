@@ -445,3 +445,63 @@ func TestReportRetryStaysInBudgetAndCountsWhatItDrops(t *testing.T) {
 		t.Fatalf("%+v", audit)
 	}
 }
+
+func TestRelationsReachOnlyTheReportCallWhenEnabled(t *testing.T) {
+	entry := telemetry.Result{Query: telemetry.Query{Kind: "trace", Service: "a"}, Status: "AVAILABLE", Records: []telemetry.Record{
+		span("c", "a", "", 0, 800, "error", "true"), span("s", "b", "c", 5, 1200),
+	}}
+	run := func(enable bool, phase string) (CompletionRequest, json.RawMessage) {
+		var got CompletionRequest
+		decider, err := NewModelDecider(providerFunc(func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+			got = r
+			return CompletionResponse{Decision: json.RawMessage(`{"kind":"synthesize","cited":"` + shortID("id-s") + `"}`)}, nil
+		}), "m", 1048576)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if enable {
+			decider.UseRelations()
+		}
+		if err = decider.BeginRun(); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := decider.Decide(t.Context(), View{RunID: "run", Phase: phase, Step: 1, Evidence: []telemetry.Result{entry}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got, raw
+	}
+	on, _ := run(true, "SYNTHESIZING")
+	if !strings.Contains(string(on.Input), `"call_relations"`) || !strings.Contains(on.Instructions, "call_relations") {
+		t.Fatal(string(on.Input))
+	}
+	for _, off := range []struct {
+		enable bool
+		phase  string
+	}{{false, "SYNTHESIZING"}, {true, "INVESTIGATING"}} {
+		got, _ := run(off.enable, off.phase)
+		if strings.Contains(string(got.Input), "call_relations") || strings.Contains(got.Instructions, "call_relations") {
+			t.Fatalf("%+v: %s", off, got.Input)
+		}
+	}
+}
+
+func TestRelationsBeyondTheLimitAreCounted(t *testing.T) {
+	records := []telemetry.Record{}
+	for i := range relationLimit + 3 {
+		id := strconv.Itoa(i)
+		records = append(records, span("c"+id, "a", "", 0, 800, "error", "true"), span("s"+id, "b", "c"+id, 5, 1200))
+	}
+	input, _, _, err := buildCountedInput(View{RunID: "run", Phase: "SYNTHESIZING", Relations: CallRelations([]telemetry.Result{{Records: records}})},
+		100000, func(_ string, b []byte) int { return len(b) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded modelInput
+	if err = json.Unmarshal(input, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Relations) != relationLimit || decoded.OmittedRelations != 3 {
+		t.Fatal(len(decoded.Relations), decoded.OmittedRelations)
+	}
+}

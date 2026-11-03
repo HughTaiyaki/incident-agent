@@ -22,6 +22,15 @@ When evidence supports an account or further queries cannot help, return {"kind"
 	synthesisInstructions = instructionsPreamble + `Write the report now from the evidence shown; queries are not accepted. Shape: {"kind":"report","report":{"result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["missing evidence"],"next_actions":[],"recovery_assessment":"UNKNOWN"}}. Claim object: {"text":"...","evidence_ids":["record ID"]}; evidence_ids must be non-empty, so put anything without a record in unknowns. Each fact is a claim object. Use DIAGNOSED when shown records support a specific account of what happened, at whatever granularity they allow, even if finer causes stay unknown; those go in unknowns. Records showing the system behaving as designed are such an account too; call something a technical fault only with evidence of one. An error the affected work recovered from is a handled event, not an ongoing fault: say so, but finishing a workflow does not prove its data is right, so do not claim no impact. Say what failed or happened, how the system responded, and the last state the records show. Use INCONCLUSIVE when no such account is supported. DIAGNOSED needs facts and primary_hypothesis:{"claim":{"text":"...","evidence_ids":["record ID"]},"contradicting_ids":[],"strength":"LOW|MEDIUM|HIGH"}. Timeline item, where claim is an object and never a string: {"at":"time of the cited record","claim":{"text":"...","evidence_ids":["record ID"]}}. Each alternative is a hypothesis object like primary_hypothesis, never a string. unknowns and next_actions are strings. Cite only shown records, using their id exactly as shown. Missing, omitted or stale data is not proof of health. A query that returned nothing is not a record: describe it in unknowns. Recovery must be UNKNOWN. Be concise.`
 )
 
+// relationInstructions is sent only with call_relations. It explains the numbers without
+// naming any service, so it applies to whatever system is being investigated.
+const relationInstructions = `call_relations are computed by the program from span durations and parent links, one entry per call across services. They state what each side recorded, not why.
+callee_end_after_caller_ms above 0 means the callee was still running after its caller had ended. An error the callee records after that point may be a result of the caller ending, so do not present it as the cause unless a record shows that.
+longest_child is where the most recorded time inside the callee went. If it is small next to callee_ms, the records do not say where the time went: say which side took the time and that the reason is unknown.
+timing_unreliable means the two clocks disagree: compare durations only. A missing caller or callee means that side left no record, which does not show what it did.
+You may cite caller_span and callee_span as evidence IDs.
+`
+
 func instructionsFor(phase string) string {
 	if phase == "SYNTHESIZING" {
 		return synthesisInstructions
@@ -86,6 +95,8 @@ type modelInput struct {
 	UncheckedTraces  []string        `json:"services_without_trace_search"`
 	Queries          []contextQuery  `json:"queries_run"`
 	Patterns         []promptPattern `json:"log_patterns"`
+	Relations        []CallRelation  `json:"call_relations,omitempty"`
+	OmittedRelations int             `json:"omitted_relations,omitempty"`
 	Records          []promptRecord  `json:"records"`
 	OmittedRecords   int             `json:"omitted_records"`
 	OmittedPatterns  int             `json:"omitted_patterns"`
@@ -99,6 +110,7 @@ const (
 	synthesisRecordLimit     = 24
 	patternLimit             = 8
 	shortIDLength            = 12
+	relationLimit            = 12
 )
 
 // feedbackHints turn the harness's outcome codes into correction text. They are fixed
@@ -184,8 +196,8 @@ func expandCitations(decision []byte, evidence []telemetry.Result) []byte {
 // estimateInput is deliberately conservative accounting for a provider whose tokenizer is
 // unknown. Half a token per byte stayed above DeepSeek's reported input on real telemetry;
 // counting whole bytes (about 3x the reported input) starved late calls of records.
-func estimateInput(phase string, input []byte) int {
-	return (len(instructionsFor(phase))+len(input))/2 + 256
+func estimateInput(instructions string, input []byte) int {
+	return (len(instructions)+len(input))/2 + 256
 }
 
 // maskIdentifiers replaces business identifiers with per-run pseudonyms before
@@ -351,6 +363,16 @@ func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]
 		}
 		encoded = candidate
 		return true
+	}
+	for i, relation := range view.Relations {
+		input.Relations = append(input.Relations, relation)
+		if i >= relationLimit || !fits(limit/2) {
+			input.Relations = input.Relations[:len(input.Relations)-1]
+			input.OmittedRelations++
+		}
+	}
+	if input.OmittedRelations > 0 {
+		encoded, _ = json.Marshal(input)
 	}
 	// Patterns only summarize; records are what a report can cite, so patterns get a third.
 	used := count(view.Phase, encoded)

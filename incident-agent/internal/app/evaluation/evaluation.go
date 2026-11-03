@@ -261,6 +261,7 @@ type CallRecord struct {
 // Outcome is one investigation's result in a form that can be compared and scored.
 type Outcome struct {
 	Flow          string               `json:"flow"`
+	Relations     bool                 `json:"relations,omitempty"`
 	Calls         []CallRecord         `json:"calls"`
 	Sample        string               `json:"sample"`
 	Attempt       int                  `json:"attempt"`
