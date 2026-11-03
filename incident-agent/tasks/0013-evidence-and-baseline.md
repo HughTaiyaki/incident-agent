@@ -1,6 +1,6 @@
 # 任务 0013：可信对照与证据计算（方案，待审查）
 
-日期：2026-11-03。状态：**第 1 阶段已完成；第 2 阶段已完成，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件，用户抽检无异议；第 3 阶段进行中。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
+日期：2026-11-03。状态：**第 1 阶段已完成；第 2 阶段已完成，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件，用户抽检无异议；第 3 阶段实验已完成，[混合流程满足决策规则](../docs/reports/0013-hybrid-flow-comparison.md)，等抽检；正在做工程接入。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
 
 ## 1. 为什么换方向
 
@@ -113,7 +113,7 @@
 - **先确认字段语义：** B7 的数字显示记录的 `at` 像是 Span 开始时间，实现前要核对 Adapter。
 - **思考模式：** 在这一阶段用相同证据对照测试，只开报告阶段，并依赖第 1 阶段的失败分类。此前 11 次有 10 次失败，直接重跑回答不了能力问题。
 
-**第 3 阶段：调查与报告（进行中）。** 混合流程和覆盖检查已实现，线上默认关闭；实验规则见[预先写定](../docs/evaluation/0013-stage3-preregistration.md)。
+**第 3 阶段：调查与报告。** 混合流程和覆盖检查已实现，线上默认关闭；[对照结果](../docs/reports/0013-hybrid-flow-comparison.md)满足决策规则，成为第 4 阶段的候选默认。实验规则见[预先写定](../docs/evaluation/0013-stage3-preregistration.md)。这 25 份样本今后只做回归，不再用来做决定。
 
 - **程序驱动的补查：** 最难的是发现自己漏了。H3、N1 里模型没看到关键记录，却觉得证据够了，所以补查条件主要由程序检查证据覆盖，不靠模型自评。规则不能写成“遇到 H3 就查退款”。没有覆盖规则能保证发现所有遗漏，要专门测“自信但证据不完整”的情况。
 
