@@ -31,6 +31,10 @@ timing_unreliable means the two clocks disagree: compare durations only. A missi
 You may cite caller_span and callee_span as evidence IDs.
 `
 
+// coverageInstructions is sent only with coverage.
+const coverageInstructions = `coverage is measured by the program and lists what this run did not see. If any count is above 0, do not write that no errors occurred or that all calls succeeded: say what was checked and that the rest was not. Zero counts mean no known gap, not proof that nothing is missing.
+`
+
 func instructionsFor(phase string) string {
 	if phase == "SYNTHESIZING" {
 		return synthesisInstructions
@@ -97,6 +101,7 @@ type modelInput struct {
 	Patterns         []promptPattern `json:"log_patterns"`
 	Relations        []CallRelation  `json:"call_relations,omitempty"`
 	OmittedRelations int             `json:"omitted_relations,omitempty"`
+	Coverage         *Coverage       `json:"coverage,omitempty"`
 	Records          []promptRecord  `json:"records"`
 	OmittedRecords   int             `json:"omitted_records"`
 	OmittedPatterns  int             `json:"omitted_patterns"`
@@ -408,6 +413,26 @@ func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]
 		}
 	}
 	seen := map[string]bool{}
+	if view.Coverage {
+		// Room for the counts is held now; they can only shrink once the records are chosen.
+		counted := measureCoverage(view, seen)
+		input.Coverage = &counted
+		if !fits(limit) {
+			input.Coverage = nil
+		}
+		// Warnings are often the only trace of what happened and are few, while one trace
+		// brings dozens of spans, so taking turns between queries can crowd them out.
+		for _, record := range severeLogKinds(view.Evidence)[:min(severeLogLimit, len(severeLogKinds(view.Evidence)))] {
+			seen[record.ID] = true
+			input.Records = append(input.Records, toPromptRecord(record, view.RunID))
+			input.OmittedRecords--
+			if !fits(limit) {
+				input.Records = input.Records[:len(input.Records)-1]
+				input.OmittedRecords++
+				delete(seen, record.ID)
+			}
+		}
+	}
 	candidates := [][]telemetry.Record{}
 	for _, entry := range view.Evidence[recordStart:] {
 		// A point without a value tells nothing beyond the count in queries_run.
@@ -456,6 +481,11 @@ func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]
 				break
 			}
 		}
+	}
+	if input.Coverage != nil {
+		counted := measureCoverage(view, seen)
+		input.Coverage = &counted
+		encoded, _ = json.Marshal(input)
 	}
 	return encoded, input.OmittedRecords, input.OmittedQueries, nil
 }

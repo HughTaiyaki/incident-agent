@@ -131,6 +131,7 @@ type ModelDecider struct {
 	tuning    ModelTuning
 	counter   TokenCounter
 	relations bool
+	coverage  bool
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -149,11 +150,22 @@ func NewModelDecider(provider Provider, model string, contextWindow int) (*Model
 // until a comparison shows it helps.
 func (m *ModelDecider) UseRelations() { m.relations = true }
 
+// UseCoverage makes the report call show distinct warnings first and say what the run did
+// not see. Only evaluation sets it, until a comparison shows it helps.
+func (m *ModelDecider) UseCoverage() { m.coverage = true }
+
 func (m *ModelDecider) instructions(phase string) string {
-	if m.relations && phase == "SYNTHESIZING" {
-		return instructionsFor(phase) + relationInstructions
+	text := instructionsFor(phase)
+	if phase != "SYNTHESIZING" {
+		return text
 	}
-	return instructionsFor(phase)
+	if m.relations {
+		text += relationInstructions
+	}
+	if m.coverage {
+		text += coverageInstructions
+	}
+	return text
 }
 
 // countInput sizes a prompt: exactly when the provider's tokenizer is known, otherwise from above.
@@ -266,6 +278,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	if m.relations && view.Phase == "SYNTHESIZING" {
 		view.Relations = CallRelations(view.Evidence)
 	}
+	view.Coverage = m.coverage && view.Phase == "SYNTHESIZING"
 	inputLimit := min(available-output, m.window*3/5-output)
 	prompt, omittedRecords, omittedQueries, err := buildCountedInput(view, inputLimit, m.countInput)
 	if err != nil {

@@ -161,3 +161,74 @@ type providerFunc func(context.Context, investigation.CompletionRequest) (invest
 func (f providerFunc) Complete(ctx context.Context, r investigation.CompletionRequest) (investigation.CompletionResponse, error) {
 	return f(ctx, r)
 }
+
+func hybridNext(t *testing.T, evidence ...telemetry.Result) (*telemetry.Query, string) {
+	t.Helper()
+	view := fixedView(evidence...)
+	view.Evidence = append([]telemetry.Result{{Query: telemetry.Query{Kind: "metrics", Metric: fixedMetric}}, {Query: telemetry.Query{Kind: "traces", Service: "order-service"}}}, evidence...)
+	return nextHybridQuery(view)
+}
+
+func logEntry(truncated bool, records ...telemetry.Record) telemetry.Result {
+	entry := telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "a", Notable: true}, Records: records}
+	entry.Quality.Truncated = truncated
+	return entry
+}
+
+func logRecord(trace, severity string, extra ...string) telemetry.Record {
+	fields := map[string]string{"severity_text": severity}
+	for i := 0; i+1 < len(extra); i += 2 {
+		fields[extra[i]] = extra[i+1]
+	}
+	return telemetry.Record{Type: "log", TraceID: trace, Fields: fields}
+}
+
+func TestHybridGapRules(t *testing.T) {
+	first, _ := nextHybridQuery(fixedView())
+	if first == nil || first.Metric != fixedMetric {
+		t.Fatalf("%+v", first)
+	}
+	if q, _ := nextHybridQuery(fixedView(telemetry.Result{Query: telemetry.Query{Kind: "metrics", Metric: fixedMetric}})); q == nil || q.Kind != "traces" {
+		t.Fatalf("%+v", q)
+	}
+	errorSummary := telemetry.Result{Query: telemetry.Query{Kind: "traces", Service: "a"}, Records: []telemetry.Record{
+		{Type: "trace_summary", TraceID: "ok", Fields: map[string]string{}}, {Type: "trace_summary", TraceID: "failed", Fields: map[string]string{"error_spans": "2"}},
+	}}
+	t.Run("cut-off sweep asks for errors once", func(t *testing.T) {
+		q, reason := hybridNext(t, logEntry(true, logRecord("x", "INFO")))
+		if q == nil || q.Severity != "ERROR" || reason != FillTruncatedLogs {
+			t.Fatalf("%+v %s", q, reason)
+		}
+		q, reason = hybridNext(t, logEntry(true, logRecord("x", "INFO")), telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "b", Severity: "ERROR"}})
+		if q == nil || q.Kind != "trace" || reason == FillTruncatedLogs {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("warning trace comes before a span-only failure", func(t *testing.T) {
+		q, reason := hybridNext(t, errorSummary, logEntry(false, logRecord("info", "INFO"), logRecord("warn", "WARN")))
+		if q == nil || q.TraceID != "warn" || reason != FillSevereLog {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("failed trace with no warning in the logs is opened", func(t *testing.T) {
+		q, reason := hybridNext(t, errorSummary, logEntry(false, logRecord("info", "INFO")))
+		if q == nil || q.TraceID != "failed" || reason != FillErrorTrace {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("retry without a failure on record opens its trace", func(t *testing.T) {
+		q, reason := hybridNext(t, logEntry(false, logRecord("info", "INFO"), logRecord("retry", "INFO", "attempt", "1")))
+		if q == nil || q.TraceID != "retry" || reason != FillRetryTrace {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("no gap falls back to any trace, then stops", func(t *testing.T) {
+		q, reason := hybridNext(t, logEntry(false, logRecord("info", "INFO")))
+		if q == nil || reason != FillDefaultTrace {
+			t.Fatalf("%+v %s", q, reason)
+		}
+		if q, _ = hybridNext(t, logEntry(false)); q != nil {
+			t.Fatalf("%+v", q)
+		}
+	})
+}

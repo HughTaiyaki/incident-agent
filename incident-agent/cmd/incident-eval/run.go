@@ -70,6 +70,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		err = deriveSample(*from, *dir, strings.Split(*drop, ","), stdout)
 	case "investigate":
 		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowAgent, stdout)
+	case "hybrid":
+		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowHybrid, stdout)
 	case "fixed":
 		err = investigate(ctx, *dir, *attempts, *thinking, *relations, evaluation.FlowFixed, stdout)
 	case "sheet":
@@ -321,8 +323,14 @@ func investigate(ctx context.Context, dir string, attempts int, thinking, relati
 			decider.UseRelations()
 		}
 		var flowDecider investigation.Decider = decider
-		if flow == evaluation.FlowFixed {
+		var hybrid *evaluation.HybridFlow
+		switch flow {
+		case evaluation.FlowFixed:
 			flowDecider = evaluation.FixedFlow{ModelDecider: decider}
+		case evaluation.FlowHybrid:
+			decider.UseCoverage()
+			hybrid = &evaluation.HybridFlow{ModelDecider: decider}
+			flowDecider = hybrid
 		}
 		result, err := investigation.Execute(ctx, request, flowDecider, replay)
 		if err != nil {
@@ -330,6 +338,9 @@ func investigate(ctx context.Context, dir string, attempts int, thinking, relati
 		}
 		outcome := evaluation.NewOutcome(manifest.SampleID, attempt, bundle.Digest, model, result)
 		outcome.Flow, outcome.Calls, outcome.Relations = flow, recording.calls, relations
+		if hybrid != nil {
+			outcome.Fills = hybrid.Fills
+		}
 		if err = writeNew(path, outcome); err != nil {
 			return err
 		}

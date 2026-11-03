@@ -146,6 +146,128 @@ func nextFixedQuery(view investigation.View) *telemetry.Query {
 	return nil
 }
 
+// Fill reasons say why the hybrid flow chose a query beyond its fixed part.
+const (
+	FillTruncatedLogs = "TRUNCATED_LOGS"
+	FillSevereLog     = "SEVERE_LOG_TRACE"
+	FillErrorTrace    = "ERROR_TRACE"
+	FillRetryTrace    = "RETRY_TRACE"
+	FillDefaultTrace  = "DEFAULT_TRACE"
+)
+
+// HybridFlow runs the same log sweep and metric as the fixed flow plus a trace search, then
+// spends the remaining query steps on gaps the program can see in the evidence. No model is
+// asked whether anything is missing, because one that has not seen a record cannot tell.
+type HybridFlow struct {
+	*investigation.ModelDecider
+	Fills []string
+}
+
+// Decide never spends a model call on choosing a query.
+func (f *HybridFlow) Decide(ctx context.Context, view investigation.View) (json.RawMessage, error) {
+	if view.Phase == "SYNTHESIZING" {
+		return f.ModelDecider.Decide(ctx, view)
+	}
+	if sweep := investigation.SweepDecision(view); sweep != nil {
+		return sweep, nil
+	}
+	decision := investigation.Decision{Kind: "synthesize"}
+	query, reason := nextHybridQuery(view)
+	if query != nil {
+		decision = investigation.Decision{Kind: "query", Query: query}
+		if reason != "" {
+			f.Fills = append(f.Fills, reason)
+		}
+	}
+	encoded, err := json.Marshal(decision)
+	if err != nil {
+		return nil, investigation.ErrInvalidDecision
+	}
+	return encoded, nil
+}
+
+// nextHybridQuery checks the gaps in order. Each rule reads only evidence fields and names no
+// service or case, so it applies to whatever system is being investigated.
+func nextHybridQuery(view investigation.View) (*telemetry.Query, string) {
+	opened := map[string]bool{}
+	asked, metric, searched := false, false, false
+	for _, entry := range view.Evidence {
+		metric = metric || entry.Query.Metric == fixedMetric
+		searched = searched || entry.Query.Kind == "traces"
+		if entry.Query.Kind == "trace" {
+			opened[entry.Query.TraceID] = true
+		}
+		asked = asked || (entry.Query.Kind == "logs" && entry.Query.Severity != "")
+	}
+	if !metric {
+		return &telemetry.Query{Kind: "metrics", Service: view.Request.Service, Metric: fixedMetric}, ""
+	}
+	if !searched {
+		return &telemetry.Query{Kind: "traces", Service: view.Request.Service}, ""
+	}
+	// A cut-off sweep may have lost the errors behind routine events. Once per run, so that
+	// a noisy system still leaves a step for opening a trace.
+	for _, entry := range view.Evidence {
+		if entry.Query.Kind == "logs" && entry.Query.Notable && entry.Quality.Truncated && !asked {
+			return &telemetry.Query{Kind: "logs", Service: entry.Query.Service, Severity: "ERROR"}, FillTruncatedLogs
+		}
+	}
+	notable := func(pick func(telemetry.Record) bool, reason string) (*telemetry.Query, string) {
+		for _, entry := range view.Evidence {
+			if entry.Query.Kind != "logs" {
+				continue
+			}
+			for _, record := range entry.Records {
+				if record.TraceID != "" && !opened[record.TraceID] && pick(record) {
+					return &telemetry.Query{Kind: "trace", Service: entry.Query.Service, TraceID: record.TraceID}, reason
+				}
+			}
+		}
+		return nil, ""
+	}
+	severe := func(record telemetry.Record) bool {
+		severity := record.Fields["severity_text"]
+		return severity == "ERROR" || severity == "FATAL" || severity == "WARN"
+	}
+	if !hasOpenedSevere(view, opened) {
+		if query, reason := notable(severe, FillSevereLog); query != nil {
+			return query, reason
+		}
+	}
+	// A failed span need not leave any warning in the logs, as a handled conflict does not.
+	for _, entry := range view.Evidence {
+		if entry.Query.Kind != "traces" {
+			continue
+		}
+		for _, record := range entry.Records {
+			if record.Fields["error_spans"] != "" && !opened[record.TraceID] {
+				return &telemetry.Query{Kind: "trace", Service: entry.Query.Service, TraceID: record.TraceID}, FillErrorTrace
+			}
+		}
+	}
+	// A retry with no failure on record: its trace may show what the first attempt did.
+	if query, reason := notable(func(record telemetry.Record) bool { return record.Fields["attempt"] != "" }, FillRetryTrace); query != nil {
+		return query, reason
+	}
+	if query, reason := notable(severe, FillSevereLog); query != nil {
+		return query, reason
+	}
+	return notable(func(telemetry.Record) bool { return true }, FillDefaultTrace)
+}
+
+// hasOpenedSevere reports whether a trace behind a warning or error is already open.
+func hasOpenedSevere(view investigation.View, opened map[string]bool) bool {
+	for _, entry := range view.Evidence {
+		for _, record := range entry.Records {
+			severity := record.Fields["severity_text"]
+			if record.Type == "log" && opened[record.TraceID] && (severity == "ERROR" || severity == "FATAL" || severity == "WARN") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 var leakPattern = regexp.MustCompile(`(?i)failpoint|\bfault|inject|barrier|mutation|testtrade|\bT[0-9]{1,2}\b|\bC[1-3]\b`)
 
 // LeakHit says where an experiment hint appears. It names the field, not the value.
@@ -244,8 +366,9 @@ func Derive(bundle telemetry.Bundle, dropKinds []string) (telemetry.Bundle, erro
 
 // Flows name who picked the queries in an outcome.
 const (
-	FlowAgent = "agent"
-	FlowFixed = "fixed"
+	FlowAgent  = "agent"
+	FlowFixed  = "fixed"
+	FlowHybrid = "hybrid"
 )
 
 // CallRecord says how one model call went and which records it showed the model. It holds
@@ -262,6 +385,7 @@ type CallRecord struct {
 type Outcome struct {
 	Flow          string               `json:"flow"`
 	Relations     bool                 `json:"relations,omitempty"`
+	Fills         []string             `json:"fills,omitempty"`
 	Calls         []CallRecord         `json:"calls"`
 	Sample        string               `json:"sample"`
 	Attempt       int                  `json:"attempt"`
