@@ -6,7 +6,7 @@
 
 五轮评测已完成，**都未达门槛。第五轮 Top-1 10/18（D1 8/9，D3 2/9），N1 误判 3/9**，见[结果报告](../docs/reports/0012-fixed-fault-evaluation.md#第五轮复测)。证据和覆盖问题已解决，剩下的主要是模型何时下结论、如何解释事实。
 
-之后用没调优过的场景和真 bug 做了[留出批次](../docs/reports/0012-fixed-fault-evaluation.md#留出批次没用来调优的场景和真-bug)：Top-1 8/21，正常行为误判 0/9。修复后[复测](../docs/reports/0012-fixed-fault-evaluation.md#修复后复测harness-v9)：Top-1 22/30，正常行为误判 5/12，仍未达标。[第二次复测](../docs/reports/0012-fixed-fault-evaluation.md#第二次复测harness-v11)：Top-1 17/33，正常行为误判 0/12，仍未达标。[第三次复测](../docs/reports/0012-fixed-fault-evaluation.md#第三次复测harness-v12)：Top-1 30/36，缺证据 0/9，正常行为误判严格 3/12、修订 0/12。
+之后用没调优过的场景和真 bug 做了[留出批次](../docs/reports/0012-fixed-fault-evaluation.md#留出批次没用来调优的场景和真-bug)：Top-1 8/21，正常行为误判 0/9。修复后[复测](../docs/reports/0012-fixed-fault-evaluation.md#修复后复测harness-v9)：Top-1 22/30，正常行为误判 5/12，仍未达标。[第二次复测](../docs/reports/0012-fixed-fault-evaluation.md#第二次复测harness-v11)：Top-1 17/33，正常行为误判 0/12，仍未达标。[第三次复测](../docs/reports/0012-fixed-fault-evaluation.md#第三次复测harness-v12)：Top-1 30/36，缺证据 0/9，正常行为误判 0/12（用户判定 T1 的超时和回滚算已恢复事件；严格算是 3/12）。
 
 用户把第 5 步的可诊断性判定和第 7 步的判分委托给 Claude，这是非盲判定，已在报告中标明。
 
