@@ -10,6 +10,10 @@ import (
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
+func buildModelInput(view View, limit int) ([]byte, int, int, error) {
+	return buildCountedInput(view, limit, estimateInput)
+}
+
 func TestBuildModelInput(t *testing.T) {
 	entry := logSample(t, 100)
 	summary, err := SummarizeLogs(entry)

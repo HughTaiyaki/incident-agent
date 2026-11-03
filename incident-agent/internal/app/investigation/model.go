@@ -61,6 +61,22 @@ type Provider interface {
 	Complete(context.Context, CompletionRequest) (CompletionResponse, error)
 }
 
+// TokenCounter counts a prompt the way its provider will, before the request is sent.
+type TokenCounter interface {
+	CountPrompt(instructions string, input []byte) int
+	Name() string
+}
+
+// tokenCounterSource is implemented by a provider that knows its model's tokenizer.
+type tokenCounterSource interface {
+	TokenCounter() TokenCounter
+}
+
+// countedInputMargin covers what an exact local count cannot see, such as provider-side overhead.
+const countedInputMargin = 16
+
+const conservativeEstimator = "utf8-half-bytes-plus-256-v2"
+
 // ModelCall is metadata only: no prompt, secret, raw response or private reasoning is stored.
 type ModelCall struct {
 	Estimator      string      `json:"estimator"`
@@ -91,6 +107,7 @@ type ModelDecider struct {
 	charged   int
 	calls     []ModelCall
 	tuning    ModelTuning
+	counter   TokenCounter
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -98,7 +115,26 @@ func NewModelDecider(provider Provider, model string, contextWindow int) (*Model
 	if provider == nil || model == "" || len(model) > 128 || contextWindow < 4096 || contextWindow > 2000000 {
 		return nil, ErrInvalidInput
 	}
-	return &ModelDecider{provider: provider, model: model, window: contextWindow, calls: []ModelCall{}}, nil
+	m := &ModelDecider{provider: provider, model: model, window: contextWindow, calls: []ModelCall{}}
+	if source, ok := provider.(tokenCounterSource); ok {
+		m.counter = source.TokenCounter()
+	}
+	return m, nil
+}
+
+// countInput sizes a prompt: exactly when the provider's tokenizer is known, otherwise from above.
+func (m *ModelDecider) countInput(phase string, input []byte) int {
+	if m.counter == nil {
+		return estimateInput(phase, input)
+	}
+	return m.counter.CountPrompt(instructionsFor(phase), input) + countedInputMargin
+}
+
+func (m *ModelDecider) estimatorName() string {
+	if m.counter == nil {
+		return conservativeEstimator
+	}
+	return m.counter.Name()
 }
 
 // ModelTuning relaxes limits for a slow model that thinks before answering. Only evaluation
@@ -191,15 +227,15 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	view.TokensLeft = ModelTokenLimit - m.charged
 	inputLimit := min(available-output, m.window*3/5-output)
-	prompt, omittedRecords, omittedQueries, err := buildModelInput(view, inputLimit)
+	prompt, omittedRecords, omittedQueries, err := buildCountedInput(view, inputLimit, m.countInput)
 	if err != nil {
 		if view.Phase != "SYNTHESIZING" && available < ReportTokenReserve {
 			return nil, ErrSynthesisRequired
 		}
 		return nil, err
 	}
-	reserved := estimateInput(view.Phase, prompt) + output
-	call := ModelCall{Estimator: "utf8-half-bytes-plus-256-v2", ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
+	reserved := m.countInput(view.Phase, prompt) + output
+	call := ModelCall{Estimator: m.estimatorName(), ContextWindow: m.window, OutputLimit: output, Step: view.Step, Model: m.model, Phase: view.Phase,
 		ContextDigest: telemetry.Hash(append([]byte(instructionsFor(view.Phase)), prompt...)), Reserved: reserved,
 		Charged: reserved, Estimated: true, Status: "UNKNOWN", OmittedRecords: omittedRecords, OmittedQueries: omittedQueries}
 	if m.reserve != nil {

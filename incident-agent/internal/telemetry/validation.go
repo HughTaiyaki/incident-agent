@@ -39,7 +39,7 @@ func ValidateRecord(record Record, q Query, policy Policy) error {
 	allowed := map[string][]string{
 		"metric": {"metric_key", "pool", "step", "peer", "method", "outcome", "value_status"},
 		"log": {"body_omitted", "source_record_digest", "event_name", "error_type", "severity_text", "outcome",
-			"from", "to", "state", "step", "replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id", "message"},
+			"from", "to", "state", "step", "replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id", "message", "lifecycle"},
 		"span": {"duration_us", "operation", "error", "error.type", "otel.status_code", "rpc.grpc.status_code", "status_description", "rpc.system", "rpc.service",
 			"rpc.method", "messaging.operation", "messaging.message.id", "order.no", "operation_id", "payment.id"},
 		"trace_summary": {"visible_spans", "error_spans"},

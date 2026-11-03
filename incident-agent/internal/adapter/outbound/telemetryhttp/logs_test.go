@@ -168,4 +168,8 @@ func TestServiceStartBecomesAFactWithoutItsText(t *testing.T) {
 	if fields["lifecycle"] != "service_started" || fields["message"] != "service registered" || fields["body_omitted"] != "" {
 		t.Fatalf("%v", fields)
 	}
+	// The harness validates every record it receives, so a field added here must pass there.
+	if err := telemetry.ValidateRecord(result.Records[0], result.Query, telemetry.DefaultPolicy()); err != nil {
+		t.Fatal(err)
+	}
 }

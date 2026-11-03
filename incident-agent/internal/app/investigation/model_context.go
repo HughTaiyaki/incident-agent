@@ -181,9 +181,9 @@ func expandCitations(decision []byte, evidence []telemetry.Result) []byte {
 	})
 }
 
-// estimateInput is deliberately conservative accounting, not a model tokenizer. Half
-// a token per byte stayed above DeepSeek's reported input on real telemetry; counting
-// whole bytes (about 3x the reported input) starved late calls of records.
+// estimateInput is deliberately conservative accounting for a provider whose tokenizer is
+// unknown. Half a token per byte stayed above DeepSeek's reported input on real telemetry;
+// counting whole bytes (about 3x the reported input) starved late calls of records.
 func estimateInput(phase string, input []byte) int {
 	return (len(instructionsFor(phase))+len(input))/2 + 256
 }
@@ -291,7 +291,7 @@ func recordHighlights(records []telemetry.Record) map[string]bool {
 	return highlights
 }
 
-func buildModelInput(view View, limit int) ([]byte, int, int, error) {
+func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]byte, int, int, error) {
 	input := modelInput{Request: view.Request, Phase: view.Phase, Feedback: feedbackText(view.Feedback), DecisionsLeft: max(0, 12-view.Step), TokensLeft: view.TokensLeft,
 		Queries: []contextQuery{}, Patterns: []promptPattern{}, Records: []promptRecord{},
 		UncheckedLogs:   unchecked(view, func(q telemetry.Query) bool { return q.Kind == "logs" && q.Severity == "" && q.EventName == "" }),
@@ -326,25 +326,25 @@ func buildModelInput(view View, limit int) ([]byte, int, int, error) {
 	}
 	encoded, _ := json.Marshal(input)
 	// Keep an explicit omission count if even the query history cannot fit.
-	for estimateInput(view.Phase, encoded) > limit && len(input.Queries) > 0 {
+	for count(view.Phase, encoded) > limit && len(input.Queries) > 0 {
 		input.Queries = input.Queries[1:]
 		input.OmittedQueries++
 		encoded, _ = json.Marshal(input)
 	}
-	if estimateInput(view.Phase, encoded) > limit {
+	if count(view.Phase, encoded) > limit {
 		return nil, 0, 0, ErrModelContext
 	}
 	// Add one at a time so whatever does not fit is counted rather than silently lost.
 	fits := func(room int) bool {
 		candidate, _ := json.Marshal(input)
-		if estimateInput(view.Phase, candidate) > room {
+		if count(view.Phase, candidate) > room {
 			return false
 		}
 		encoded = candidate
 		return true
 	}
 	// Patterns only summarize; records are what a report can cite, so patterns get a third.
-	used := estimateInput(view.Phase, encoded)
+	used := count(view.Phase, encoded)
 	patternRoom := used + (limit-used)/3
 	groups := []LogPattern{}
 	for _, entry := range view.LogPatterns {

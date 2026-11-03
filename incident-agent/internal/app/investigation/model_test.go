@@ -19,6 +19,56 @@ func (f providerFunc) Complete(ctx context.Context, r CompletionRequest) (Comple
 	return f(ctx, r)
 }
 
+type countingProvider struct {
+	providerFunc
+	counter TokenCounter
+}
+
+func (p countingProvider) TokenCounter() TokenCounter { return p.counter }
+
+type fixedCounter int
+
+func (c fixedCounter) CountPrompt(string, []byte) int { return int(c) }
+func (fixedCounter) Name() string                     { return "fixed-counter" }
+
+func TestModelDeciderUsesProviderTokenCounter(t *testing.T) {
+	const counted = 1000
+	provider := countingProvider{counter: fixedCounter(counted), providerFunc: func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
+		return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())}), Usage: &ModelUsage{InputTokens: counted, OutputTokens: r.MaxOutputTokens}}, nil
+	}}
+	model, err := NewModelDecider(provider, "test-model", 8192)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = model.BeginRun(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = model.Decide(t.Context(), View{Request: request(), Phase: "INVESTIGATING"}); err != nil {
+		t.Fatal(err)
+	}
+	call := model.ModelAudit()[0]
+	if call.Estimator != "fixed-counter" || call.Reserved != counted+countedInputMargin+call.OutputLimit || call.Status != "RECEIVED" {
+		t.Fatalf("%+v", call)
+	}
+}
+
+func TestModelDeciderStopsWhenCountedInputCannotFit(t *testing.T) {
+	provider := countingProvider{counter: fixedCounter(ModelTokenLimit), providerFunc: func(context.Context, CompletionRequest) (CompletionResponse, error) {
+		t.Fatal("provider must not be called")
+		return CompletionResponse{}, nil
+	}}
+	model, err := NewModelDecider(provider, "test-model", 8192)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = model.BeginRun(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = model.Decide(t.Context(), View{Request: request(), Phase: "SYNTHESIZING"}); !errors.Is(err, ErrModelContext) {
+		t.Fatal(err)
+	}
+}
+
 func TestModelDecider(t *testing.T) {
 	t.Run("usage settlement and detached audit", func(t *testing.T) {
 		model, err := NewModelDecider(providerFunc(func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {

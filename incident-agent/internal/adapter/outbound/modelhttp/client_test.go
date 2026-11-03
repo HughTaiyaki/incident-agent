@@ -187,3 +187,15 @@ func TestComplete(t *testing.T) {
 		}
 	})
 }
+
+func TestTokenCounterFollowsProfile(t *testing.T) {
+	for profile, exact := range map[string]bool{ProfileOpenAI: false, ProfileDeepSeek: true, ProfileDeepSeekThinking: true} {
+		client, err := New(Config{Endpoint: "http://127.0.0.1:1/chat", Model: "m", Profile: profile})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := client.TokenCounter() != nil; got != exact {
+			t.Fatalf("%s: counter present = %v", profile, got)
+		}
+	}
+}

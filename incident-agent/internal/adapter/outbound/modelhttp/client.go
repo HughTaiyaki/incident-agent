@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/deepseektoken"
 	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 )
 
@@ -60,6 +61,7 @@ type Client struct {
 	profile   string
 	http      *http.Client
 	transport *http.Transport
+	counter   investigation.TokenCounter
 }
 
 // New disables proxy inheritance, redirects and automatic application retries.
@@ -92,8 +94,19 @@ func New(config Config) (*Client, error) {
 		MaxIdleConns: 1, IdleConnTimeout: 30 * time.Second, ForceAttemptHTTP2: true}
 	client := &http.Client{Transport: transport, Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	return &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport}, nil
+	c := &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport}
+	if profile == ProfileDeepSeek || profile == ProfileDeepSeekThinking {
+		counter, err := deepseektoken.Load()
+		if err != nil {
+			return nil, err
+		}
+		c.counter = counter
+	}
+	return c, nil
 }
+
+// TokenCounter returns the profile's exact counter, or nil when its tokenizer is unknown.
+func (c *Client) TokenCounter() investigation.TokenCounter { return c.counter }
 
 // Close releases idle provider connections.
 func (c *Client) Close() { c.transport.CloseIdleConnections() }
