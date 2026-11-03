@@ -50,7 +50,7 @@ type Query struct {
 	EventID      string    `json:"event_id,omitempty"`
 	EventName    string    `json:"event_name,omitempty"`
 	Severity     string    `json:"severity,omitempty"`
-	// Notable keeps only warnings, errors, named events and process starts. Under load routine access logs
+	// Notable keeps only warnings, errors and named events. Under load routine access logs
 	// otherwise fill the earliest records, which are all a logs query returns.
 	Notable bool `json:"notable,omitempty"`
 }
@@ -61,7 +61,7 @@ func NotableLog(fields map[string]string) bool {
 	case "WARN", "ERROR", "FATAL":
 		return true
 	}
-	return fields["event_name"] != "" || fields["lifecycle"] != ""
+	return fields["event_name"] != ""
 }
 
 // Policy is configured by the operator, never by telemetry text.

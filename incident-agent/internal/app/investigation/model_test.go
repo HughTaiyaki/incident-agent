@@ -72,7 +72,7 @@ func TestModelDeciderStopsWhenCountedInputCannotFit(t *testing.T) {
 func TestModelDecider(t *testing.T) {
 	t.Run("usage settlement and detached audit", func(t *testing.T) {
 		model, err := NewModelDecider(providerFunc(func(_ context.Context, r CompletionRequest) (CompletionResponse, error) {
-			if r.MaxOutputTokens > 1500 || !json.Valid(r.Input) {
+			if r.MaxOutputTokens > ReportOutputTokens || !json.Valid(r.Input) {
 				t.Fatal(r)
 			}
 			return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())}), Usage: &ModelUsage{InputTokens: 100, OutputTokens: 50}}, nil
@@ -160,7 +160,7 @@ func TestModelDecider(t *testing.T) {
 			q := query()
 			q.Limit = len(phases)
 			return CompletionResponse{Decision: raw(Decision{Kind: "query", Query: &q})}, nil
-		}), "test-model", 8192)
+		}), "test-model", 16384)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,7 +238,7 @@ func TestSynthesisUsesRemainingBudget(t *testing.T) {
 	if err := json.Unmarshal(got.Input, &input); err != nil {
 		t.Fatal(err)
 	}
-	if got.MaxOutputTokens != MaxOutputTokens || len(input.Records) != 8 || input.OmittedRecords != 0 {
+	if got.MaxOutputTokens != ReportOutputTokens || len(input.Records) != 8 || input.OmittedRecords != 0 {
 		t.Fatalf("output=%d records=%d omitted=%d", got.MaxOutputTokens, len(input.Records), input.OmittedRecords)
 	}
 }
@@ -368,5 +368,41 @@ func TestTuningChangesLimitsButNotBudgetChecks(t *testing.T) {
 	usage = ModelUsage{InputTokens: 100, OutputTokens: 6001}
 	if _, err := model.Decide(t.Context(), View{Request: request(), Phase: "SYNTHESIZING"}); !errors.Is(err, ErrModelBudget) {
 		t.Fatal(err)
+	}
+}
+
+func TestReportCallGetsRoomThatQueriesDoNot(t *testing.T) {
+	limits := map[string]int{}
+	model, err := NewModelDecider(providerFunc(func(_ context.Context, c CompletionRequest) (CompletionResponse, error) {
+		var input modelInput
+		if err := json.Unmarshal(c.Input, &input); err != nil {
+			t.Fatal(err)
+		}
+		limits[input.Phase] = c.MaxOutputTokens
+		if input.Phase == "SYNTHESIZING" {
+			return CompletionResponse{Decision: raw(Decision{Kind: "report", Report: ptr(fallback())})}, nil
+		}
+		if len(input.Records) == 0 {
+			return CompletionResponse{Decision: raw(Decision{Kind: "query", Query: &telemetry.Query{Kind: "logs", Service: "order-service"}})}, nil
+		}
+		return CompletionResponse{Decision: raw(map[string]string{"kind": synthesizeKind})}, nil
+	}), "test-model", 32000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := request()
+	r.Services = []string{"order-service"}
+	seen := 0
+	if _, err := Execute(t.Context(), r, model, queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+		seen++
+		return observation(q, strconv.Itoa(seen)), nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if limits["INVESTIGATING"] != MaxOutputTokens {
+		t.Fatalf("%v", limits)
+	}
+	if limits["SYNTHESIZING"] != ReportOutputTokens {
+		t.Fatalf("%v", limits)
 	}
 }

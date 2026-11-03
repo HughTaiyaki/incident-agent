@@ -10,7 +10,7 @@ import (
 )
 
 // PolicyVersion identifies the Harness guard and execution policy.
-const PolicyVersion = "harness-v11"
+const PolicyVersion = "harness-v12"
 
 // MaxEvidenceBytes bounds saved evidence and derived log summaries.
 const MaxEvidenceBytes = 2 << 20

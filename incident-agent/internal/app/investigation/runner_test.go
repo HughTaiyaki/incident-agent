@@ -576,6 +576,12 @@ func TestTraceQueryWithoutServiceUsesTheRequestService(t *testing.T) {
 	if got := withRequestScope(telemetry.Query{Kind: "logs"}, r); got.Service != "" {
 		t.Fatal("logs must still name a service")
 	}
+	if got := withRequestScope(telemetry.Query{Kind: "traces", Notable: true}, r); got.Notable {
+		t.Fatal("notable applies to logs only")
+	}
+	if got := withRequestScope(telemetry.Query{Kind: "logs", Notable: true}, r); !got.Notable {
+		t.Fatal("notable logs lost their filter")
+	}
 }
 
 func TestLooseReportFeedsSalvageWhenStrictDecodingFails(t *testing.T) {

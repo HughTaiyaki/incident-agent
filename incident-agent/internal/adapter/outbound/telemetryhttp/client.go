@@ -142,7 +142,7 @@ func request(q telemetry.Query) (string, string, url.Values) {
 			}
 		}
 		if q.Notable {
-			expression += ` | regexp "^(?P<lifecycle>` + serviceStartLog + `)" | event_name!="" or severity_text=~"WARN|ERROR|FATAL" or lifecycle!=""`
+			expression += ` | event_name!="" or severity_text=~"WARN|ERROR|FATAL"`
 		}
 		v.Set("query", expression)
 		v.Set("start", strconv.FormatInt(q.Start.UnixNano(), 10))

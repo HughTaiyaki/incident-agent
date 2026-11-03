@@ -368,6 +368,10 @@ func withRequestScope(q telemetry.Query, request Request) telemetry.Query {
 	if q.Kind == "trace" && q.Service == "" {
 		q.Service = request.Service
 	}
+	// Models reuse the logs filter on trace searches; it narrows nothing there.
+	if q.Kind != "logs" {
+		q.Notable = false
+	}
 	return q
 }
 

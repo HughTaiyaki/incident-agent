@@ -34,10 +34,6 @@ func cloneFields(fields map[string]string) map[string]string {
 	return cloned
 }
 
-// serviceStartLog begins the line a service writes when it registers at startup. A second one
-// inside a window is the only sign of a restart: a crashing process logs nothing on its way out.
-const serviceStartLog = "service register"
-
 type logFilter struct {
 	key   string
 	value string
@@ -103,10 +99,6 @@ func (c *Client) logs(data []byte, result *telemetry.Result) error {
 					fields[key] = value
 				}
 			}
-			delete(fields, "lifecycle")
-			if strings.HasPrefix(body, serviceStartLog) {
-				fields["lifecycle"] = "service_started"
-			}
 			service, env := fields["service_name"], fields["deployment_environment_name"]
 			if service != q.Service || !c.policy.Allows(service, env, at, q) {
 				result.Missing("out_of_scope_record")
@@ -129,11 +121,7 @@ func (c *Client) logs(data []byte, result *telemetry.Result) error {
 			// so a body is kept only where it explains something, and only after sanitizing.
 			// Routine INFO and DEBUG text adds exposure without helping a diagnosis.
 			clean := map[string]string{"body_omitted": "true", "source_record_digest": telemetry.Hash([]byte(timestamp + body))}
-			if fields["lifecycle"] != "" {
-				// The line carries addresses and adds nothing to the fact of the start.
-				clean["message"] = "service registered"
-				delete(clean, "body_omitted")
-			} else if telemetry.NotableLog(fields) {
+			if telemetry.NotableLog(fields) {
 				// Masking works on shape, so first remove the IDs this record names exactly.
 				for _, key := range []string{"order_id", "operation_id", "event_id", "trace_id", "span_id"} {
 					if value := fields[key]; value != "" {
@@ -146,7 +134,7 @@ func (c *Client) logs(data []byte, result *telemetry.Result) error {
 				}
 			}
 			for _, key := range []string{"event_name", "error_type", "severity_text", "outcome", "from", "to", "state", "step",
-				"replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id", "lifecycle"} {
+				"replayed", "attempt", "consumer", "event_type", "order_id", "operation_id", "event_id"} {
 				if value := fields[key]; safeToken(value) {
 					clean[key] = value
 				}

@@ -152,21 +152,17 @@ func TestNotableLogsAskLokiForThemAndDropRoutineRecords(t *testing.T) {
 	}
 }
 
-func TestServiceStartBecomesAFactWithoutItsText(t *testing.T) {
+func TestAdapterLogRecordsPassHarnessValidation(t *testing.T) {
 	t.Parallel()
 	q := testQuery("logs")
 	q.Notable = true
 	at := q.Start.Add(time.Minute).UnixNano()
 	client := newClient(t, func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":[{"stream":{"service_name":"%s","deployment_environment_name":"%s","severity_text":"DEBUG"},"values":[["%d","service register: Endpoints:10.1.2.3:31005"]]}]}}`, q.Service, q.Environment, at)
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":[{"stream":{"service_name":"%s","deployment_environment_name":"%s","severity_text":"WARN"},"values":[["%d","reserve failed"]]}]}}`, q.Service, q.Environment, at)
 	})
 	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
 	if err != nil || len(result.Records) != 1 {
 		t.Fatalf("%d records: %v", len(result.Records), err)
-	}
-	fields := result.Records[0].Fields
-	if fields["lifecycle"] != "service_started" || fields["message"] != "service registered" || fields["body_omitted"] != "" {
-		t.Fatalf("%v", fields)
 	}
 	// The harness validates every record it receives, so a field added here must pass there.
 	if err := telemetry.ValidateRecord(result.Records[0], result.Query, telemetry.DefaultPolicy()); err != nil {

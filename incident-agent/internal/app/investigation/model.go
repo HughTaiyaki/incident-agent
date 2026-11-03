@@ -22,6 +22,10 @@ const minInvestigationTokens = 4000
 // MaxOutputTokens caps a single completion request.
 const MaxOutputTokens = 1500
 
+// ReportOutputTokens caps the report call. A query fits in far less, but a report cut off by
+// the limit is not valid JSON, and the provider boundary can only discard it.
+const ReportOutputTokens = 3000
+
 // MaxConfigurableOutputTokens bounds what ModelTuning may raise the output limit to.
 const MaxConfigurableOutputTokens = 8000
 
@@ -154,9 +158,12 @@ func (m *ModelDecider) Tune(t ModelTuning) error {
 	return nil
 }
 
-func (m *ModelDecider) outputLimit() int {
+func (m *ModelDecider) outputLimit(phase string) int {
 	if m.tuning.MaxOutput > 0 {
 		return m.tuning.MaxOutput
+	}
+	if phase == "SYNTHESIZING" {
+		return ReportOutputTokens
 	}
 	return MaxOutputTokens
 }
@@ -214,7 +221,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		}
 		return nil, ErrModelBudget
 	}
-	output := min(m.outputLimit(), available/3)
+	output := min(m.outputLimit(view.Phase), available/3)
 	if output < 256 {
 		if view.Phase != "SYNTHESIZING" {
 			return nil, ErrSynthesisRequired
