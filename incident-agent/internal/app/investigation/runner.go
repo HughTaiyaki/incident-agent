@@ -165,7 +165,11 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		if err != nil && phase == "SYNTHESIZING" {
 			// One malformed answer must not discard the evidence: repair like an invalid report.
 			reportRejections++
+			if loose := looseReport(raw); loose != nil {
+				rejected = loose
+			}
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
+			audit.Detail = decisionRejection(raw)
 			run.Steps = append(run.Steps, audit)
 			if reportRejections >= maxReportRejections || step == 12 {
 				return finish(salvage(rejected, run.Evidence), "REPORT_INVALID")
@@ -209,7 +213,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			key := string(canonical)
 			switch {
 			case queryErr != nil || !within:
-				audit.Outcome, audit.Detail = "QUERY_REJECTED", queryRejection(*decision.Query, request, within)
+				audit.Outcome, audit.Detail = "QUERY_REJECTED", queryRejection(*decision.Query, request, queryErr == nil && !within)
 				noProgress++
 			case succeededBefore(run.Evidence, q):
 				// The answer is already frozen; asking again only spends budget.
@@ -360,13 +364,35 @@ func withRequestScope(q telemetry.Query, request Request) telemetry.Query {
 	if q.End.IsZero() {
 		q.End = request.End
 	}
+	// A trace spans services, so naming one would add nothing but a way to be refused.
+	if q.Kind == "trace" && q.Service == "" {
+		q.Service = request.Service
+	}
 	return q
 }
 
+// decisionRejection tells text that was not JSON, often a cut-off answer, from wrong fields.
+func decisionRejection(raw []byte) string {
+	if !json.Valid(raw) {
+		return "JSON"
+	}
+	return "SHAPE"
+}
+
+// looseReport reads what it can from a report that strict decoding refused, so salvage can
+// check its claims. Anything kept still has to pass validation one claim at a time.
+func looseReport(raw []byte) *Draft {
+	var parsed struct {
+		Report *Draft `json:"report"`
+	}
+	_ = json.Unmarshal(raw, &parsed) // A wrongly typed field is skipped; the rest is still read.
+	return parsed.Report
+}
+
 // queryRejection names why a query was refused with a fixed code, never with model text.
-func queryRejection(q telemetry.Query, request Request, within bool) string {
+func queryRejection(q telemetry.Query, request Request, outside bool) string {
 	switch {
-	case !within:
+	case outside:
 		return "WINDOW"
 	case !slices.Contains(request.Services, q.Service):
 		return "SERVICE"

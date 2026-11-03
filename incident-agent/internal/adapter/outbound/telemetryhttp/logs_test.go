@@ -151,3 +151,21 @@ func TestNotableLogsAskLokiForThemAndDropRoutineRecords(t *testing.T) {
 		t.Fatalf("%d records", len(result.Records))
 	}
 }
+
+func TestServiceStartBecomesAFactWithoutItsText(t *testing.T) {
+	t.Parallel()
+	q := testQuery("logs")
+	q.Notable = true
+	at := q.Start.Add(time.Minute).UnixNano()
+	client := newClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":[{"stream":{"service_name":"%s","deployment_environment_name":"%s","severity_text":"DEBUG"},"values":[["%d","service register: Endpoints:10.1.2.3:31005"]]}]}}`, q.Service, q.Environment, at)
+	})
+	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
+	if err != nil || len(result.Records) != 1 {
+		t.Fatalf("%d records: %v", len(result.Records), err)
+	}
+	fields := result.Records[0].Fields
+	if fields["lifecycle"] != "service_started" || fields["message"] != "service registered" || fields["body_omitted"] != "" {
+		t.Fatalf("%v", fields)
+	}
+}

@@ -557,12 +557,39 @@ func TestSalvageKeepsSoundClaimsOfARejectedReport(t *testing.T) {
 func TestQueryRejectionNamesAFixedReason(t *testing.T) {
 	r := request()
 	for want, got := range map[string]string{
-		"WINDOW":  queryRejection(telemetry.Query{Service: r.Service}, r, false),
-		"SERVICE": queryRejection(telemetry.Query{Service: "inventory-service"}, r, true),
-		"SHAPE":   queryRejection(telemetry.Query{Service: r.Service}, r, true),
+		"WINDOW":  queryRejection(telemetry.Query{Service: r.Service}, r, true),
+		"SERVICE": queryRejection(telemetry.Query{Service: "inventory-service"}, r, false),
+		"SHAPE":   queryRejection(telemetry.Query{Service: r.Service}, r, false),
 	} {
 		if got != want {
 			t.Fatalf("got %s, want %s", got, want)
 		}
+	}
+}
+
+func TestTraceQueryWithoutServiceUsesTheRequestService(t *testing.T) {
+	r := request()
+	got := withRequestScope(telemetry.Query{Kind: "trace", TraceID: "47a807ffb80f72831f81879600000000"}, r)
+	if got.Service != r.Service {
+		t.Fatal(got.Service)
+	}
+	if got := withRequestScope(telemetry.Query{Kind: "logs"}, r); got.Service != "" {
+		t.Fatal("logs must still name a service")
+	}
+}
+
+func TestLooseReportFeedsSalvageWhenStrictDecodingFails(t *testing.T) {
+	evidence := []telemetry.Result{observation(query(), "a")}
+	id := evidence[0].Records[0].ID
+	raw := []byte(`{"kind":"report","extra":1,"report":{"result":"DIAGNOSED","timeline":["not an object"],"facts":[{"text":"观察到事件。","evidence_ids":["` + id + `"]}],"recovery_assessment":"UNKNOWN"}}`)
+	if _, err := decodeDecision(raw); err == nil {
+		t.Fatal("strict decoding should refuse this")
+	}
+	got := salvage(looseReport(raw), evidence)
+	if len(got.Facts) != 1 || got.Result != "INCONCLUSIVE" {
+		t.Fatalf("%+v", got)
+	}
+	if looseReport([]byte(`{"kind":"report","report":{"res`)) != nil || decisionRejection([]byte(`{"kind":`)) != "JSON" || decisionRejection(raw) != "SHAPE" {
+		t.Fatal("cut-off text must yield nothing to salvage")
 	}
 }
