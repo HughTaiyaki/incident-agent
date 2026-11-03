@@ -1,6 +1,6 @@
 # 任务 0013：可信对照与证据计算（方案，待审查）
 
-日期：2026-11-03。状态：**第 1 阶段已完成（远端 CI 待确认）；第 2 阶段实验已完成，等用户抽检，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
+日期：2026-11-03。状态：**第 1 阶段已完成；第 2 阶段实验已完成，等用户抽检，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
 
 ## 1. 为什么换方向
 
@@ -167,6 +167,6 @@
 - [x] 决策规则、固定查询清单、关键记录清单都在看结果前写定并提交。
 - [x] 第 12 步的报告调用失败后有重试名额，预算不足时的表现有测试覆盖。
 - [x] 失败分类和展示记录 ID 进入评测输出，不含提示词或供应商错误正文。
-- [ ] `make release-check` 通过，远端 CI 通过。
+- [x] `make release-check` 通过，远端 CI 通过（`18b650f`）。
 - [x] 两种流程各跑完全部样本，逐次结果、分子分母、费用和失败分类写入报告。
 - [ ] 按决策规则写出动态调查的去留，你确认后再开第 2 阶段。
