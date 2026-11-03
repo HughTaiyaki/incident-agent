@@ -125,3 +125,29 @@ func TestLogBodyKeptOnlyWhereItExplainsAndAfterSanitizing(t *testing.T) {
 		}
 	}
 }
+
+func TestNotableLogsAskLokiForThemAndDropRoutineRecords(t *testing.T) {
+	t.Parallel()
+	q := testQuery("logs")
+	q.Notable = true
+	at := q.Start.Add(time.Minute).UnixNano()
+	line := func(metadata string) string {
+		return fmt.Sprintf(`{"stream":{"service_name":"%s","deployment_environment_name":"%s"%s},"values":[["%d","text"]]}`, q.Service, q.Environment, metadata, at)
+	}
+	var asked string
+	client := newClient(t, func(w http.ResponseWriter, r *http.Request) {
+		asked = r.URL.Query().Get("query")
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"streams","result":[%s,%s,%s]}}`,
+			line(`,"severity_text":"INFO"`), line(`,"severity_text":"WARN"`), line(`,"severity_text":"INFO","event_name":"order.transition"`))
+	})
+	result, err := client.Query(t.Context(), q, telemetry.NewBudget(16))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(asked, `| event_name!="" or severity_text=~"WARN|ERROR|FATAL"`) {
+		t.Fatal(asked)
+	}
+	if len(result.Records) != 2 {
+		t.Fatalf("%d records", len(result.Records))
+	}
+}

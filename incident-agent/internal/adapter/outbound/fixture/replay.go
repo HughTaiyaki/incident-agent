@@ -109,6 +109,9 @@ func covers(captured, q telemetry.Query) bool {
 	if captured.Metric != q.Metric || captured.StepSeconds != q.StepSeconds {
 		return false
 	}
+	if captured.Notable && !q.Notable {
+		return false
+	}
 	// A filtered sample cannot answer a query that broadens or changes that filter.
 	pairs := [][2]string{
 		{captured.TraceID, q.TraceID}, {captured.OrderID, q.OrderID}, {captured.OperationID, q.OperationID},
@@ -143,5 +146,5 @@ func (r *Replay) matches(record telemetry.Record, q telemetry.Query) bool {
 			return false
 		}
 	}
-	return true
+	return !q.Notable || telemetry.NotableLog(record.Fields)
 }

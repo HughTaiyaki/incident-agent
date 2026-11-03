@@ -47,16 +47,6 @@ func logFilters(q telemetry.Query) []logFilter {
 	}
 }
 
-// explanatoryLog selects warnings, errors and named business events. Routine INFO and DEBUG
-// text adds exposure without helping a diagnosis.
-func explanatoryLog(fields map[string]string) bool {
-	switch fields["severity_text"] {
-	case "WARN", "ERROR", "FATAL":
-		return true
-	}
-	return fields["event_name"] != ""
-}
-
 func (c *Client) logs(data []byte, result *telemetry.Result) error {
 	var response struct {
 		Status string `json:"status"`
@@ -120,14 +110,18 @@ func (c *Client) logs(data []byte, result *telemetry.Result) error {
 					matched = false
 				}
 			}
+			if q.Notable && !telemetry.NotableLog(fields) {
+				matched = false
+			}
 			if !matched {
 				result.Missing("filter_mismatch")
 				continue
 			}
 			// Structural evidence is always retained. Free text may contain secrets or personal data,
 			// so a body is kept only where it explains something, and only after sanitizing.
+			// Routine INFO and DEBUG text adds exposure without helping a diagnosis.
 			clean := map[string]string{"body_omitted": "true", "source_record_digest": telemetry.Hash([]byte(timestamp + body))}
-			if explanatoryLog(fields) {
+			if telemetry.NotableLog(fields) {
 				// Masking works on shape, so first remove the IDs this record names exactly.
 				for _, key := range []string{"order_id", "operation_id", "event_id", "trace_id", "span_id"} {
 					if value := fields[key]; value != "" {

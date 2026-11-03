@@ -274,7 +274,12 @@ func TestLogSweepIsOffUnlessRequestedAndNotInSynthesis(t *testing.T) {
 	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: q}}}) == nil {
 		t.Fatal("filtered query counted as coverage")
 	}
-	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: query()}}}) != nil {
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: query()}}}) == nil {
+		t.Fatal("routine logs counted as coverage")
+	}
+	q = query()
+	q.Notable = true
+	if SweepDecision(View{Request: r, Phase: "INVESTIGATING", Evidence: []telemetry.Result{{Query: q}}}) != nil {
 		t.Fatal("swept twice")
 	}
 }

@@ -7,8 +7,13 @@ import (
 	"unicode/utf8"
 )
 
-// maxMessageRunes bounds free text kept from a log body or span status.
-const maxMessageRunes = 200
+// maxMessageRunes bounds free text kept from a log body or span status. Long text keeps both
+// ends: errors usually come last, after a statement that would otherwise use up the limit.
+const (
+	maxMessageRunes  = 320
+	messageHeadRunes = 110
+	messageElision   = " ... "
+)
 
 var (
 	// Text naming a credential or an experiment control point is dropped whole: masking
@@ -58,7 +63,8 @@ func SanitizeMessage(text string) (string, bool) {
 		})
 	}
 	if runes := []rune(line); len(runes) > maxMessageRunes {
-		line = string(runes[:maxMessageRunes])
+		tail := maxMessageRunes - messageHeadRunes - len(messageElision)
+		line = string(runes[:messageHeadRunes]) + messageElision + string(runes[len(runes)-tail:])
 	}
 	return line, true
 }

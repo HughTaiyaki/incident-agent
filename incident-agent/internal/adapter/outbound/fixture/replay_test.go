@@ -105,3 +105,14 @@ func TestObservedFixtureReplaysWithoutNetwork(t *testing.T) {
 		t.Fatalf("records=%d backend requests=%d", total, budget.Used())
 	}
 }
+
+func TestReplayAnswersNotableFromAWiderCapture(t *testing.T) {
+	t.Parallel()
+	r, q := replay(t)
+	notable := q
+	notable.Notable = true
+	result, err := r.Query(context.Background(), notable, telemetry.NewBudget(16))
+	if err != nil || len(result.Records) != 3 {
+		t.Fatalf("%d records: %v", len(result.Records), err)
+	}
+}

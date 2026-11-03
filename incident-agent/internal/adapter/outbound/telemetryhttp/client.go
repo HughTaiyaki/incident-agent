@@ -141,6 +141,9 @@ func request(q telemetry.Query) (string, string, url.Values) {
 				expression += " | " + filter.key + "=" + strconv.Quote(filter.value)
 			}
 		}
+		if q.Notable {
+			expression += ` | event_name!="" or severity_text=~"WARN|ERROR|FATAL"`
+		}
 		v.Set("query", expression)
 		v.Set("start", strconv.FormatInt(q.Start.UnixNano(), 10))
 		v.Set("end", strconv.FormatInt(q.End.UnixNano(), 10))

@@ -36,6 +36,14 @@ func TestSanitizeMessageDropsUnsafeText(t *testing.T) {
 	}
 }
 
+func TestSanitizeMessageKeepsTheErrorAfterALongStatement(t *testing.T) {
+	statement := "reserve failed: UPDATE inventory SET " + strings.Repeat("available=available + 1,", 30) + " WHERE id=5: Error 1054 (42S22): Unknown column"
+	got, ok := SanitizeMessage(statement)
+	if !ok || !strings.HasPrefix(got, "reserve failed") || !strings.HasSuffix(got, "Error 1054 (42S22): Unknown column") || len([]rune(got)) > maxMessageRunes {
+		t.Fatalf("%d runes: %q", len([]rune(got)), got)
+	}
+}
+
 func TestSanitizeMessageIsBoundedAndStable(t *testing.T) {
 	got, ok := SanitizeMessage(strings.Repeat("word ", 100))
 	if !ok || len([]rune(got)) > maxMessageRunes {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -529,4 +530,39 @@ func TestExecuteQueryTimeout(t *testing.T) {
 			t.Fatalf("%+v %v", result, err)
 		}
 	})
+}
+
+func TestSalvageKeepsSoundClaimsOfARejectedReport(t *testing.T) {
+	q := query()
+	evidence := []telemetry.Result{observation(q, "a")}
+	good := Claim{Text: "观察到一条业务事件。", EvidenceIDs: []string{evidence[0].Records[0].ID}}
+	bad := Claim{Text: "引用不存在的记录。", EvidenceIDs: []string{"no-such-record"}}
+	if got := salvage(nil, evidence); len(got.Facts) != 0 || got.Result != "INCONCLUSIVE" {
+		t.Fatalf("%+v", got)
+	}
+	got := salvage(&Draft{Result: "DIAGNOSED", Facts: []Claim{good, bad}, Unknowns: []string{"下游状态"},
+		Primary: &Hypothesis{Claim: bad, Strength: "HIGH"}}, evidence)
+	if got.Result != "INCONCLUSIVE" || got.Primary != nil || len(got.Facts) != 1 || got.Facts[0].Text != good.Text || !slices.Contains(got.Unknowns, "下游状态") {
+		t.Fatalf("bad hypothesis kept or facts lost: %+v", got)
+	}
+	got = salvage(&Draft{Result: "DIAGNOSED", Facts: []Claim{good, bad}, Primary: &Hypothesis{Claim: good, Strength: "LOW"}}, evidence)
+	if got.Result != "DIAGNOSED" || got.Primary == nil || len(got.Facts) != 1 {
+		t.Fatalf("sound hypothesis lost: %+v", got)
+	}
+	if err := ValidateReport(got, evidence); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestQueryRejectionNamesAFixedReason(t *testing.T) {
+	r := request()
+	for want, got := range map[string]string{
+		"WINDOW":  queryRejection(telemetry.Query{Service: r.Service}, r, false),
+		"SERVICE": queryRejection(telemetry.Query{Service: "inventory-service"}, r, true),
+		"SHAPE":   queryRejection(telemetry.Query{Service: r.Service}, r, true),
+	} {
+		if got != want {
+			t.Fatalf("got %s, want %s", got, want)
+		}
+	}
 }

@@ -50,6 +50,18 @@ type Query struct {
 	EventID      string    `json:"event_id,omitempty"`
 	EventName    string    `json:"event_name,omitempty"`
 	Severity     string    `json:"severity,omitempty"`
+	// Notable keeps only warnings, errors and named events. Under load routine access logs
+	// otherwise fill the earliest records, which are all a logs query returns.
+	Notable bool `json:"notable,omitempty"`
+}
+
+// NotableLog reports whether a log record explains something rather than being routine.
+func NotableLog(fields map[string]string) bool {
+	switch fields["severity_text"] {
+	case "WARN", "ERROR", "FATAL":
+		return true
+	}
+	return fields["event_name"] != ""
 }
 
 // Policy is configured by the operator, never by telemetry text.
@@ -82,7 +94,7 @@ func (p Policy) Normalize(q Query) (Query, error) {
 	if q.Limit < 0 || q.StepSeconds < 0 {
 		return Query{}, ErrInvalidQuery
 	}
-	hasLogFields := q.OrderID != "" || q.OperationID != "" || q.EventID != "" || q.EventName != "" || q.Severity != ""
+	hasLogFields := q.OrderID != "" || q.OperationID != "" || q.EventID != "" || q.EventName != "" || q.Severity != "" || q.Notable
 	hasMetricFields := q.Metric != "" || q.StepSeconds != 0 || q.Peer != "" || q.WorkflowStep != "" || q.Pool != ""
 	switch q.Kind {
 	case "metrics":

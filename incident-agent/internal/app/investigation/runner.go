@@ -67,12 +67,13 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 	phase, feedback, stopReason := cp.Phase, cp.Feedback, cp.StopReason
 	repeated, seen := cp.Repeated, cp.Seen
 	noProgress, reportRejections, evidenceBytes := cp.NoProgress, cp.ReportRejections, cp.EvidenceBytes
+	rejected := cp.Rejected
 	persist := func(step int) error {
 		if save == nil {
 			return nil
 		}
 		run.BackendRequests = budget.Used()
-		snapshot := Checkpoint{Schema: 1, Policy: PolicyVersion, Run: run, NextStep: step, Phase: phase, Feedback: feedback, StopReason: stopReason, Repeated: repeated, Seen: seen, NoProgress: noProgress, ReportRejections: reportRejections, EvidenceBytes: evidenceBytes}
+		snapshot := Checkpoint{Schema: 1, Policy: PolicyVersion, Run: run, NextStep: step, Phase: phase, Feedback: feedback, StopReason: stopReason, Repeated: repeated, Seen: seen, NoProgress: noProgress, ReportRejections: reportRejections, EvidenceBytes: evidenceBytes, Rejected: rejected}
 		if err := save(ctx, snapshot); err != nil {
 			return errors.Join(ErrPersistence, err)
 		}
@@ -144,7 +145,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			}
 			audit.Outcome = stopReason
 			run.Steps = append(run.Steps, audit)
-			return finish(fallback(), stopReason)
+			return finish(salvage(rejected, run.Evidence), stopReason)
 		}
 		decision, err := decodeDecision(raw)
 		// A report written before any query has seen nothing, so ask again rather than
@@ -167,7 +168,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
 			run.Steps = append(run.Steps, audit)
 			if reportRejections >= maxReportRejections || step == 12 {
-				return finish(fallback(), "REPORT_INVALID")
+				return finish(salvage(rejected, run.Evidence), "REPORT_INVALID")
 			}
 			continue
 		} else if err != nil {
@@ -181,6 +182,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 				return finish(*decision.Report, stopReason)
 			}
 			reportRejections++
+			rejected = decision.Report
 			audit.Outcome, feedback = reportRejected, reportRejected
 			var rejection reportRejection
 			if errors.As(err, &rejection) {
@@ -188,7 +190,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			}
 			run.Steps = append(run.Steps, audit)
 			if reportRejections >= maxReportRejections || step == 12 {
-				return finish(fallback(), "REPORT_INVALID")
+				return finish(salvage(rejected, run.Evidence), "REPORT_INVALID")
 			}
 			phase, stopReason = "SYNTHESIZING", "REPORT_REPAIRED"
 			continue
@@ -197,7 +199,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			audit.Outcome, feedback = "QUERY_NOT_ALLOWED", "QUERY_NOT_ALLOWED"
 			run.Steps = append(run.Steps, audit)
 			if reportRejections >= maxReportRejections || step == 12 {
-				return finish(fallback(), stopReason)
+				return finish(salvage(rejected, run.Evidence), stopReason)
 			}
 			continue
 		} else {
@@ -207,7 +209,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			key := string(canonical)
 			switch {
 			case queryErr != nil || !within:
-				audit.Outcome = "QUERY_REJECTED"
+				audit.Outcome, audit.Detail = "QUERY_REJECTED", queryRejection(*decision.Query, request, within)
 				noProgress++
 			case succeededBefore(run.Evidence, q):
 				// The answer is already frozen; asking again only spends budget.
@@ -359,6 +361,18 @@ func withRequestScope(q telemetry.Query, request Request) telemetry.Query {
 		q.End = request.End
 	}
 	return q
+}
+
+// queryRejection names why a query was refused with a fixed code, never with model text.
+func queryRejection(q telemetry.Query, request Request, within bool) string {
+	switch {
+	case !within:
+		return "WINDOW"
+	case !slices.Contains(request.Services, q.Service):
+		return "SERVICE"
+	default:
+		return "SHAPE"
+	}
 }
 
 func firstLook(evidence []telemetry.Result, q telemetry.Query) bool {

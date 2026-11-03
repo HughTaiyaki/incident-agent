@@ -257,10 +257,10 @@ func SweepDecision(view View) json.RawMessage {
 		found := false
 		for _, entry := range view.Evidence {
 			q := entry.Query
-			found = found || (q.Kind == "logs" && q.Service == service && q.Severity == "" && q.EventName == "")
+			found = found || (q.Kind == "logs" && q.Service == service && q.Notable)
 		}
 		if !found {
-			decision, err := json.Marshal(Decision{Kind: "query", Query: &telemetry.Query{Kind: "logs", Service: service}})
+			decision, err := json.Marshal(Decision{Kind: "query", Query: &telemetry.Query{Kind: "logs", Service: service, Notable: true}})
 			if err != nil {
 				return nil
 			}

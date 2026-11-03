@@ -39,6 +39,7 @@ func PlanQueries(services []string, environment string, start, end time.Time) []
 			queries = append(queries, q)
 		}
 		add(telemetry.Query{Kind: "logs"})
+		add(telemetry.Query{Kind: "logs", Notable: true})
 		add(telemetry.Query{Kind: "logs", Severity: "ERROR"})
 		add(telemetry.Query{Kind: "logs", Severity: "WARN"})
 		add(telemetry.Query{Kind: "traces"})
@@ -65,6 +66,7 @@ func TraceQueries(results []telemetry.Result) []telemetry.Query {
 	for _, pick := range []func(telemetry.Query) bool{
 		func(q telemetry.Query) bool { return q.Severity == "ERROR" },
 		func(q telemetry.Query) bool { return q.Severity == "WARN" },
+		func(q telemetry.Query) bool { return q.Notable },
 		func(q telemetry.Query) bool { return q.Kind == "traces" },
 	} {
 		for _, entry := range results {

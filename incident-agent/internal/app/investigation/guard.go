@@ -192,6 +192,39 @@ func ValidateReport(d Draft, evidence []telemetry.Result) error {
 	return nil
 }
 
+// salvage keeps what a rejected report got right when no repair is left: claims are validated
+// one by one, and a report whose hypothesis fails cannot stay DIAGNOSED. One bad citation used
+// to discard sound facts along with it.
+func salvage(rejected *Draft, evidence []telemetry.Result) Draft {
+	if rejected == nil {
+		return fallback()
+	}
+	const removed = "报告中引用无效的内容已被移除，结论需结合冻结证据人工核对。"
+	probe := func(d Draft) bool {
+		d.Result, d.Recovery, d.Unknowns = "INCONCLUSIVE", "UNKNOWN", []string{removed}
+		return ValidateReport(d, evidence) == nil
+	}
+	out := fallback()
+	out.Unknowns = []string{removed}
+	for _, fact := range rejected.Facts {
+		if probe(Draft{Facts: []Claim{fact}}) && len(out.Facts) < 20 {
+			out.Facts = append(out.Facts, fact)
+		}
+	}
+	for _, unknown := range rejected.Unknowns {
+		if probe(Draft{Unknowns: []string{unknown}}) && safeText(unknown, 2000) && len(out.Unknowns) < 20 {
+			out.Unknowns = append(out.Unknowns, unknown)
+		}
+	}
+	if rejected.Primary != nil && len(out.Facts) > 0 && probe(Draft{Primary: rejected.Primary}) {
+		out.Result, out.Primary = "DIAGNOSED", rejected.Primary
+	}
+	if ValidateReport(out, evidence) != nil {
+		return fallback()
+	}
+	return out
+}
+
 func fallback() Draft {
 	return Draft{Result: "INCONCLUSIVE", Facts: []Claim{}, Timeline: []TimelineItem{}, Alternatives: []Hypothesis{},
 		Unknowns:    []string{"现有证据或有效决策不足以形成可核验结论；来源缺口见冻结查询结果。"},

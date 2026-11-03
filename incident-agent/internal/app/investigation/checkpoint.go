@@ -26,6 +26,8 @@ type Checkpoint struct {
 	NoProgress       int             `json:"no_progress"`
 	ReportRejections int             `json:"report_rejections"`
 	EvidenceBytes    int             `json:"evidence_bytes"`
+	// Rejected is the latest report that failed validation, kept to salvage its sound claims.
+	Rejected *Draft `json:"rejected,omitempty"`
 }
 
 // NewCheckpoint freezes run identity and time; the caller supplies persisted times.
