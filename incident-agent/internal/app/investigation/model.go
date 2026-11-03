@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -40,6 +41,10 @@ var ErrModelContext = errors.New("model context cannot fit budget")
 
 // ErrModelProvider hides untrusted provider failure details.
 var ErrModelProvider = errors.New("model provider unavailable")
+
+// ErrModelOutcomeUnknown is a call an earlier worker reserved and never recorded. It may still
+// be running at the provider, so it ends the run rather than being sent again.
+var ErrModelOutcomeUnknown = fmt.Errorf("%w: outcome unknown", ErrModelProvider)
 
 // CompletionRequest contains already bounded text; a provider cannot select tool privileges.
 type CompletionRequest struct {

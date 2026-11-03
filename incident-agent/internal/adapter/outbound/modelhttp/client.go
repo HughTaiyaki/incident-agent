@@ -21,6 +21,10 @@ import (
 // MaxResponseBytes bounds the complete provider response body.
 const MaxResponseBytes = 256 << 10
 
+// busyDelays spaces the retries of a request the provider refused because it is overloaded.
+// They fit inside one decision's limit and leave most of it for the request that gets through.
+var busyDelays = []time.Duration{time.Second, 2 * time.Second, 3 * time.Second, 4 * time.Second, 5 * time.Second}
+
 var modelName = regexp.MustCompile(`^[a-zA-Z0-9_./:-]{1,128}$`)
 
 // Request shapes differ between providers that all accept the Chat Completions path.
@@ -62,9 +66,11 @@ type Client struct {
 	http      *http.Client
 	transport *http.Transport
 	counter   investigation.TokenCounter
+	busy      []time.Duration
 }
 
-// New disables proxy inheritance, redirects and automatic application retries.
+// New disables proxy inheritance and redirects. The only retry is of a request the provider
+// refused as overloaded, which it did not process; a timeout's cost is unknown, so it is never retried here.
 func New(config Config) (*Client, error) {
 	profile, err := ParseProfile(config.Profile)
 	if err != nil {
@@ -94,7 +100,7 @@ func New(config Config) (*Client, error) {
 		MaxIdleConns: 1, IdleConnTimeout: 30 * time.Second, ForceAttemptHTTP2: true}
 	client := &http.Client{Transport: transport, Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	c := &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport}
+	c := &Client{endpoint: u.String(), apiKey: config.APIKey, model: config.Model, profile: profile, http: client, transport: transport, busy: busyDelays}
 	if profile == ProfileDeepSeek || profile == ProfileDeepSeekThinking {
 		counter, err := deepseektoken.Load()
 		if err != nil {
@@ -172,7 +178,38 @@ type completionResult struct {
 	} `json:"usage"`
 }
 
-// Complete performs one request without redirect or automatic retry.
+// post sends the request, waiting and resending while the provider reports it is overloaded.
+func (c *Client) post(ctx context.Context, encoded []byte) (*http.Response, error) {
+	for attempt := 0; ; attempt++ {
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(encoded))
+		if err != nil {
+			return nil, err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		if c.apiKey != "" {
+			request.Header.Set("Authorization", "Bearer "+c.apiKey)
+		}
+		response, err := c.http.Do(request)
+		if err != nil {
+			return nil, err
+		}
+		busy := response.StatusCode == http.StatusServiceUnavailable || response.StatusCode == http.StatusTooManyRequests
+		if !busy || attempt >= len(c.busy) {
+			return response, nil
+		}
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, MaxResponseBytes))
+		_ = response.Body.Close()
+		wait := time.NewTimer(c.busy[attempt])
+		select {
+		case <-ctx.Done():
+			wait.Stop()
+			return nil, ctx.Err()
+		case <-wait.C:
+		}
+	}
+}
+
+// Complete performs one bounded request without redirect.
 func (c *Client) Complete(ctx context.Context, input investigation.CompletionRequest) (investigation.CompletionResponse, error) {
 	if err := ctx.Err(); err != nil {
 		return investigation.CompletionResponse{}, err
@@ -185,15 +222,7 @@ func (c *Client) Complete(ctx context.Context, input investigation.CompletionReq
 	if err != nil {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(encoded))
-	if err != nil {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
-	}
-	request.Header.Set("Content-Type", "application/json")
-	if c.apiKey != "" {
-		request.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
-	response, err := c.http.Do(request)
+	response, err := c.post(ctx, encoded)
 	if err != nil {
 		return investigation.CompletionResponse{}, investigation.ErrModelProvider
 	}

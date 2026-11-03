@@ -18,7 +18,21 @@ const (
 	defaultDecisionTimeout = 30 * time.Second
 )
 
-// Execute runs sequentially with fixed limits. There is no persistence, retry of decisions or resume.
+// maxModelRetries is how many failed model calls one run may try again.
+const maxModelRetries = 2
+
+// modelRetries is derived from the steps, so a resumed run keeps the count.
+func modelRetries(steps []Step) int {
+	count := 0
+	for _, step := range steps {
+		if step.Outcome == "MODEL_RETRY" {
+			count++
+		}
+	}
+	return count
+}
+
+// Execute runs sequentially with fixed limits; a failed model call is retried at most maxModelRetries times.
 // Decider and Querier must honor context; uncooperative implementations are not forcibly terminated.
 func Execute(ctx context.Context, request Request, decider Decider, querier Querier) (Run, error) {
 	if _, err := ValidateRequest(request); err != nil || decider == nil || querier == nil {
@@ -141,6 +155,18 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			} else if errors.Is(decideErr, ErrModelContext) {
 				stopReason = "MODEL_CONTEXT_LIMIT"
 			} else {
+				audit.Detail = "PROVIDER"
+				if callErr != nil {
+					audit.Detail = "TIMEOUT"
+				}
+				// Evidence already paid for should not be lost to one failed call. The retry
+				// reserves its own budget and takes a decision slot, so the limits still hold.
+				retryable := !errors.Is(decideErr, ErrModelOutcomeUnknown)
+				if retryable && ctx.Err() == nil && step < 12 && modelRetries(run.Steps) < maxModelRetries {
+					audit.Outcome = "MODEL_RETRY"
+					run.Steps = append(run.Steps, audit)
+					continue
+				}
 				stopReason = "DECIDER_UNAVAILABLE"
 			}
 			audit.Outcome = stopReason

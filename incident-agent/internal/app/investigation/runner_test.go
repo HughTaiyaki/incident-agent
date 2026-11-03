@@ -392,6 +392,41 @@ func TestExecute(t *testing.T) {
 			t.Fatal(result)
 		}
 	})
+	t.Run("failed model call is tried again with the evidence kept", func(t *testing.T) {
+		failures := 0
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Step == 1 {
+				q := query()
+				return raw(Decision{Kind: "query", Query: &q}), nil
+			}
+			if failures < maxModelRetries {
+				failures++
+				if len(v.Evidence) != 1 {
+					t.Error("evidence lost", v.Evidence)
+				}
+				return nil, errors.New("secret=private")
+			}
+			return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+		}), queryFunc(func(context.Context, telemetry.Query, *telemetry.Budget) (telemetry.Result, error) {
+			return telemetry.Result{}, errors.New("secret=private")
+		}))
+		if modelRetries(result.Steps) != maxModelRetries || result.Report.StopReason == "DECIDER_UNAVAILABLE" || result.Steps[1].Detail != "PROVIDER" {
+			t.Fatal(result)
+		}
+	})
+	t.Run("call with unknown outcome is not sent again", func(t *testing.T) {
+		calls := 0
+		result, _ := Execute(t.Context(), request(), decideFunc(func(context.Context, View) (json.RawMessage, error) {
+			calls++
+			return nil, ErrModelOutcomeUnknown
+		}), queryFunc(func(context.Context, telemetry.Query, *telemetry.Budget) (telemetry.Result, error) {
+			t.Fatal("IO")
+			return telemetry.Result{}, nil
+		}))
+		if calls != 1 || result.Report.StopReason != "DECIDER_UNAVAILABLE" {
+			t.Fatal(calls, result)
+		}
+	})
 	t.Run("wrong service response cannot become evidence", func(t *testing.T) {
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
 			if v.Step == 1 {
@@ -450,7 +485,7 @@ func TestExecuteCancellationAndDeadlines(t *testing.T) {
 				t.Fatal("IO")
 				return telemetry.Result{}, nil
 			}))
-			if result.Decisions != 1 || result.Report.StopReason != "DECIDER_UNAVAILABLE" {
+			if result.Decisions != 3 || result.Report.StopReason != "DECIDER_UNAVAILABLE" || result.Steps[0].Detail != "TIMEOUT" {
 				t.Fatal(result)
 			}
 		})

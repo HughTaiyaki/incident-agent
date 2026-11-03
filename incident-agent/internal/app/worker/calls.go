@@ -99,7 +99,7 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	s.mu.Unlock()
 	if exists {
 		if op.Status != "COMMITTED" {
-			return nil, investigation.ErrModelProvider
+			return nil, investigation.ErrModelOutcomeUnknown
 		}
 		var saved modelResult
 		if json.Unmarshal([]byte(op.Result), &saved) != nil {

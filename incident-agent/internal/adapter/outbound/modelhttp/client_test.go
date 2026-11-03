@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 )
@@ -148,6 +149,7 @@ func TestComplete(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer client.Close()
+			client.busy = nil
 			_, err = client.Complete(t.Context(), testInput())
 			if err == nil || strings.Contains(err.Error(), "private") || calls != 1 {
 				t.Fatal(err, calls)
@@ -184,6 +186,68 @@ func TestComplete(t *testing.T) {
 		cancel()
 		if _, err = client.Complete(ctx, testInput()); err == nil || calls != 0 {
 			t.Fatal("cancel ignored")
+		}
+	})
+}
+
+func TestCompleteRetriesOnlyWhenProviderIsBusy(t *testing.T) {
+	answer := `{"choices":[{"finish_reason":"stop","message":{"content":"{}"}}],"usage":{"prompt_tokens":1,"completion_tokens":1}}`
+	for _, tt := range []struct {
+		name     string
+		statuses []int
+		calls    int
+		ok       bool
+	}{
+		{"overloaded then answered", []int{503, 429, 200}, 3, true},
+		{"gives up after the last delay", []int{503, 503, 503}, 3, false},
+		{"other failure is final", []int{500, 200}, 1, false},
+		{"bad request is final", []int{400, 200}, 1, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var bodies []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body completionBody
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+				}
+				bodies = append(bodies, body.Messages[1].Content)
+				status := tt.statuses[min(len(bodies)-1, len(tt.statuses)-1)]
+				w.WriteHeader(status)
+				if status == http.StatusOK {
+					_, _ = fmt.Fprint(w, answer)
+				}
+			}))
+			defer server.Close()
+			client, err := New(Config{Endpoint: server.URL + "/chat", Model: "test"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer client.Close()
+			client.busy = []time.Duration{time.Millisecond, time.Millisecond}
+			_, err = client.Complete(t.Context(), testInput())
+			if (err == nil) != tt.ok || len(bodies) != tt.calls {
+				t.Fatal(err, len(bodies))
+			}
+			for _, body := range bodies {
+				if body != bodies[0] {
+					t.Fatal("retry changed the request")
+				}
+			}
+		})
+	}
+	t.Run("waiting stops when the decision is cancelled", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(503) }))
+		defer server.Close()
+		client, err := New(Config{Endpoint: server.URL + "/chat", Model: "test"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Close()
+		client.busy = []time.Duration{time.Hour}
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		defer cancel()
+		if _, err = client.Complete(ctx, testInput()); err == nil {
+			t.Fatal("kept waiting")
 		}
 	})
 }

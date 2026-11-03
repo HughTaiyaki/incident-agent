@@ -103,7 +103,7 @@ func TestRunConfigurationAndFailure(t *testing.T) {
 		calls := 0
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			calls++
-			w.WriteHeader(429)
+			w.WriteHeader(500)
 			_, _ = fmt.Fprint(w, "secret=private-response")
 		}))
 		defer server.Close()
@@ -128,7 +128,7 @@ func TestRunConfigurationAndFailure(t *testing.T) {
 		if err = json.Unmarshal(data, &a); err != nil {
 			t.Fatal(err)
 		}
-		if calls != 1 || a.Run.Report.Result != "INCONCLUSIVE" || a.Run.ModelCalls[0].Charged != a.Run.ModelCalls[0].Reserved {
+		if calls != 3 || a.Run.Report.Result != "INCONCLUSIVE" || a.Run.ModelCalls[0].Charged != a.Run.ModelCalls[0].Reserved {
 			t.Fatal(a.Run)
 		}
 	})
