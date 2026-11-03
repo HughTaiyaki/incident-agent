@@ -3,6 +3,7 @@ package modelhttp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -248,6 +249,57 @@ func TestCompleteRetriesOnlyWhenProviderIsBusy(t *testing.T) {
 		defer cancel()
 		if _, err = client.Complete(ctx, testInput()); err == nil {
 			t.Fatal("kept waiting")
+		}
+	})
+}
+
+func TestFailuresCarryFixedCodes(t *testing.T) {
+	for _, tt := range []struct {
+		status int
+		body   string
+		code   string
+	}{
+		{503, `secret=private`, "BUSY"}, {429, `secret=private`, "BUSY"}, {500, `secret=private`, "HTTP_5XX"}, {401, `secret=private`, "HTTP_4XX"},
+		{200, `{"choices":[{"finish_reason":"length","message":{"content":"{}"}}]}`, "TRUNCATED"},
+		{200, `{"choices":[{"finish_reason":"stop","message":{"content":"{}","refusal":"private"}}]}`, "REFUSED"},
+		{200, `{"choices":[{"finish_reason":"content_filter","message":{"content":""}}]}`, "REFUSED"},
+		{200, `not JSON`, "RESPONSE"},
+	} {
+		t.Run(tt.code+fmt.Sprint(tt.status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = fmt.Fprint(w, tt.body)
+			}))
+			defer server.Close()
+			client, err := New(Config{Endpoint: server.URL + "/chat", Model: "test"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer client.Close()
+			client.busy = []time.Duration{time.Millisecond}
+			_, err = client.Complete(t.Context(), testInput())
+			var failure *investigation.ProviderError
+			if !errors.As(err, &failure) || failure.Code != tt.code || !errors.Is(err, investigation.ErrModelProvider) || strings.Contains(err.Error(), "private") {
+				t.Fatal(err)
+			}
+			if tt.code == "BUSY" && failure.BusyRetries != 1 {
+				t.Fatal(failure.BusyRetries)
+			}
+		})
+	}
+	t.Run("unreachable provider", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		endpoint := server.URL + "/chat"
+		server.Close()
+		client, err := New(Config{Endpoint: endpoint, Model: "test"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Close()
+		_, err = client.Complete(t.Context(), testInput())
+		var failure *investigation.ProviderError
+		if !errors.As(err, &failure) || failure.Code != "NETWORK" {
+			t.Fatal(err)
 		}
 	})
 }

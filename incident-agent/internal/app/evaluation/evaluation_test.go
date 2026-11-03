@@ -1,12 +1,14 @@
 package evaluation
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/adapter/outbound/fixture"
+	"github.com/hughtaiyaki/incident-agent/internal/app/investigation"
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
 
@@ -104,4 +106,58 @@ func TestManifestAndRequestCarryNoCaseLabel(t *testing.T) {
 			t.Fatal("label leaked:", hint)
 		}
 	}
+}
+
+func fixedView(evidence ...telemetry.Result) investigation.View {
+	return investigation.View{RunID: "run", Phase: "INVESTIGATING", Evidence: evidence,
+		Request: investigation.Request{Service: "order-service", Services: []string{"order-service"}, LogSweep: true}}
+}
+
+func TestFixedFlowPicksQueriesByRuleAndNeverCallsTheModel(t *testing.T) {
+	decider, err := investigation.NewModelDecider(providerFunc(func(context.Context, investigation.CompletionRequest) (investigation.CompletionResponse, error) {
+		t.Fatal("model chose a query")
+		return investigation.CompletionResponse{}, nil
+	}), "m", 16384)
+	if err != nil {
+		t.Fatal(err)
+	}
+	flow := FixedFlow{ModelDecider: decider}
+	next := func(view investigation.View) investigation.Decision {
+		raw, err := flow.Decide(t.Context(), view)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decision investigation.Decision
+		if err = json.Unmarshal(raw, &decision); err != nil {
+			t.Fatal(err)
+		}
+		return decision
+	}
+	if first := next(fixedView()); first.Query == nil || first.Query.Kind != "logs" || !first.Query.Notable {
+		t.Fatalf("%+v", first)
+	}
+	logs := telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "order-service", Notable: true}, Records: []telemetry.Record{
+		{TraceID: "info", Fields: map[string]string{"severity_text": "INFO"}}, {TraceID: "warn", Fields: map[string]string{"severity_text": "WARN"}},
+		{TraceID: "error", Fields: map[string]string{"severity_text": "ERROR"}}, {TraceID: "other", Fields: map[string]string{}},
+	}}
+	if metric := next(fixedView(logs)); metric.Query == nil || metric.Query.Metric != fixedMetric {
+		t.Fatalf("%+v", metric)
+	}
+	evidence := []telemetry.Result{logs, {Query: telemetry.Query{Kind: "metrics", Metric: fixedMetric}}}
+	for _, want := range []string{"error", "warn", "info"} {
+		decision := next(fixedView(evidence...))
+		if decision.Query == nil || decision.Query.TraceID != want || decision.Query.Service != "order-service" {
+			t.Fatalf("want %s: %+v", want, decision)
+		}
+		evidence = append(evidence, telemetry.Result{Query: *decision.Query})
+	}
+	if last := next(fixedView(evidence...)); last.Kind != "synthesize" {
+		t.Fatalf("%+v", last)
+	}
+}
+
+type providerFunc func(context.Context, investigation.CompletionRequest) (investigation.CompletionResponse, error)
+
+func (f providerFunc) Complete(ctx context.Context, r investigation.CompletionRequest) (investigation.CompletionResponse, error) {
+	return f(ctx, r)
 }

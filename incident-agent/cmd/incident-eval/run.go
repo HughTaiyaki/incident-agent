@@ -68,7 +68,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "derive":
 		err = deriveSample(*from, *dir, strings.Split(*drop, ","), stdout)
 	case "investigate":
-		err = investigate(ctx, *dir, *attempts, *thinking, stdout)
+		err = investigate(ctx, *dir, *attempts, *thinking, evaluation.FlowAgent, stdout)
+	case "fixed":
+		err = investigate(ctx, *dir, *attempts, *thinking, evaluation.FlowFixed, stdout)
 	case "sheet":
 		err = sheet(*dir, stdout)
 	default:
@@ -229,7 +231,42 @@ func deriveSample(from, dir string, drop []string, stdout io.Writer) error {
 	return json.NewEncoder(stdout).Encode(manifest)
 }
 
-func investigate(ctx context.Context, dir string, attempts int, thinking bool, stdout io.Writer) error {
+// recorder notes each model call for the outcome. It embeds the client so the decider still
+// finds its token counter.
+type recorder struct {
+	*modelhttp.Client
+	calls []evaluation.CallRecord
+}
+
+func (r *recorder) Complete(ctx context.Context, input investigation.CompletionRequest) (investigation.CompletionResponse, error) {
+	var shown struct {
+		Phase   string `json:"phase"`
+		Records []struct {
+			ID string `json:"id"`
+		} `json:"records"`
+	}
+	call := evaluation.CallRecord{Shown: []string{}}
+	if json.Unmarshal(input.Input, &shown) == nil {
+		call.Phase = shown.Phase
+		for _, record := range shown.Records {
+			call.Shown = append(call.Shown, record.ID)
+		}
+	}
+	started := time.Now()
+	response, err := r.Client.Complete(ctx, input)
+	call.Seconds, call.BusyRetries = time.Since(started).Seconds(), response.BusyRetries
+	var failure *investigation.ProviderError
+	if errors.As(err, &failure) {
+		call.Failure, call.BusyRetries = failure.Code, failure.BusyRetries
+	}
+	if ctx.Err() != nil {
+		call.Failure = "TIMEOUT"
+	}
+	r.calls = append(r.calls, call)
+	return response, err
+}
+
+func investigate(ctx context.Context, dir string, attempts int, thinking bool, flow string, stdout io.Writer) error {
 	if attempts < 1 || attempts > 20 {
 		return errors.New("attempts must be between 1 and 20")
 	}
@@ -269,7 +306,8 @@ func investigate(ctx context.Context, dir string, attempts int, thinking bool, s
 		if _, err := os.Lstat(path); err == nil {
 			return fmt.Errorf("%s exists: results are never overwritten", filepath.Base(path))
 		}
-		decider, err := investigation.NewModelDecider(client, model, window)
+		recording := &recorder{Client: client}
+		decider, err := investigation.NewModelDecider(recording, model, window)
 		if err != nil {
 			return err
 		}
@@ -278,11 +316,16 @@ func investigate(ctx context.Context, dir string, attempts int, thinking bool, s
 				return err
 			}
 		}
-		result, err := investigation.Execute(ctx, request, decider, replay)
+		var flowDecider investigation.Decider = decider
+		if flow == evaluation.FlowFixed {
+			flowDecider = evaluation.FixedFlow{ModelDecider: decider}
+		}
+		result, err := investigation.Execute(ctx, request, flowDecider, replay)
 		if err != nil {
 			return err
 		}
 		outcome := evaluation.NewOutcome(manifest.SampleID, attempt, bundle.Digest, model, result)
+		outcome.Flow, outcome.Calls = flow, recording.calls
 		if err = writeNew(path, outcome); err != nil {
 			return err
 		}

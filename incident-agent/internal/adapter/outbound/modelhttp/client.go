@@ -178,12 +178,30 @@ type completionResult struct {
 	} `json:"usage"`
 }
 
+func failure(code string, busyRetries int) error {
+	return &investigation.ProviderError{Code: code, BusyRetries: busyRetries}
+}
+
+// statusFailure labels a non-200 status by class; the body is untrusted and is not read.
+func statusFailure(status int) string {
+	switch {
+	case status == http.StatusServiceUnavailable || status == http.StatusTooManyRequests:
+		return "BUSY"
+	case status >= 500:
+		return "HTTP_5XX"
+	case status >= 400:
+		return "HTTP_4XX"
+	}
+	return "HTTP_OTHER"
+}
+
 // post sends the request, waiting and resending while the provider reports it is overloaded.
-func (c *Client) post(ctx context.Context, encoded []byte) (*http.Response, error) {
+// It also returns how many of those resends it made.
+func (c *Client) post(ctx context.Context, encoded []byte) (*http.Response, int, error) {
 	for attempt := 0; ; attempt++ {
 		request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(encoded))
 		if err != nil {
-			return nil, err
+			return nil, attempt, err
 		}
 		request.Header.Set("Content-Type", "application/json")
 		if c.apiKey != "" {
@@ -191,11 +209,11 @@ func (c *Client) post(ctx context.Context, encoded []byte) (*http.Response, erro
 		}
 		response, err := c.http.Do(request)
 		if err != nil {
-			return nil, err
+			return nil, attempt, err
 		}
 		busy := response.StatusCode == http.StatusServiceUnavailable || response.StatusCode == http.StatusTooManyRequests
 		if !busy || attempt >= len(c.busy) {
-			return response, nil
+			return response, attempt, nil
 		}
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, MaxResponseBytes))
 		_ = response.Body.Close()
@@ -203,7 +221,7 @@ func (c *Client) post(ctx context.Context, encoded []byte) (*http.Response, erro
 		select {
 		case <-ctx.Done():
 			wait.Stop()
-			return nil, ctx.Err()
+			return nil, attempt, ctx.Err()
 		case <-wait.C:
 		}
 	}
@@ -216,37 +234,43 @@ func (c *Client) Complete(ctx context.Context, input investigation.CompletionReq
 	}
 	if input.MaxOutputTokens < 1 || input.MaxOutputTokens > investigation.MaxConfigurableOutputTokens ||
 		len(input.Instructions)+len(input.Input) > 64000 || !json.Valid(input.Input) {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure("REQUEST", 0)
 	}
 	encoded, err := json.Marshal(c.requestBody(input))
 	if err != nil {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure("REQUEST", 0)
 	}
-	response, err := c.post(ctx, encoded)
+	response, retries, err := c.post(ctx, encoded)
 	if err != nil {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure("NETWORK", retries)
 	}
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure(statusFailure(response.StatusCode), retries)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, MaxResponseBytes+1))
 	if err != nil || len(data) > MaxResponseBytes {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure("RESPONSE", retries)
 	}
 	var decoded completionResult
 	if json.Unmarshal(data, &decoded) != nil || len(decoded.Choices) != 1 {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+		return investigation.CompletionResponse{}, failure("RESPONSE", retries)
 	}
 	choice := decoded.Choices[0]
-	if choice.FinishReason != "stop" || choice.Message.Refusal != nil || choice.Message.Content == "" ||
-		(len(choice.Message.ToolCalls) > 0 && string(choice.Message.ToolCalls) != "null" && string(choice.Message.ToolCalls) != "[]") {
-		return investigation.CompletionResponse{}, investigation.ErrModelProvider
+	if choice.FinishReason == "length" {
+		return investigation.CompletionResponse{}, failure("TRUNCATED", retries)
 	}
-	result := investigation.CompletionResponse{Decision: json.RawMessage(choice.Message.Content)}
+	if choice.Message.Refusal != nil || choice.FinishReason == "content_filter" {
+		return investigation.CompletionResponse{}, failure("REFUSED", retries)
+	}
+	if choice.FinishReason != "stop" || choice.Message.Content == "" ||
+		(len(choice.Message.ToolCalls) > 0 && string(choice.Message.ToolCalls) != "null" && string(choice.Message.ToolCalls) != "[]") {
+		return investigation.CompletionResponse{}, failure("RESPONSE", retries)
+	}
+	result := investigation.CompletionResponse{Decision: json.RawMessage(choice.Message.Content), BusyRetries: retries}
 	if decoded.Usage != nil {
 		if decoded.Usage.PromptTokens == nil || decoded.Usage.CompletionTokens == nil {
-			return investigation.CompletionResponse{}, investigation.ErrModelProvider
+			return investigation.CompletionResponse{}, failure("RESPONSE", retries)
 		}
 		result.Usage = &investigation.ModelUsage{InputTokens: *decoded.Usage.PromptTokens, OutputTokens: *decoded.Usage.CompletionTokens}
 	}

@@ -42,6 +42,18 @@ var ErrModelContext = errors.New("model context cannot fit budget")
 // ErrModelProvider hides untrusted provider failure details.
 var ErrModelProvider = errors.New("model provider unavailable")
 
+// ProviderError says what kind of failure a call had. Code is a fixed label, never the
+// provider's own text, so it is safe to keep in audits.
+type ProviderError struct {
+	Code        string
+	BusyRetries int
+}
+
+func (e *ProviderError) Error() string { return ErrModelProvider.Error() + ": " + e.Code }
+
+// Unwrap lets callers keep treating every provider failure as ErrModelProvider.
+func (e *ProviderError) Unwrap() error { return ErrModelProvider }
+
 // ErrModelOutcomeUnknown is a call an earlier worker reserved and never recorded. It may still
 // be running at the provider, so it ends the run rather than being sent again.
 var ErrModelOutcomeUnknown = fmt.Errorf("%w: outcome unknown", ErrModelProvider)
@@ -61,8 +73,9 @@ type ModelUsage struct {
 
 // CompletionResponse carries an untrusted decision and optional usage.
 type CompletionResponse struct {
-	Decision json.RawMessage
-	Usage    *ModelUsage
+	Decision    json.RawMessage
+	Usage       *ModelUsage
+	BusyRetries int
 }
 
 // Provider is consumed here, and must respect cancellation and the explicit output cap.
@@ -263,6 +276,10 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	index := len(m.calls) - 1
 	if callErr != nil {
+		var failure *ProviderError
+		if errors.As(callErr, &failure) {
+			return nil, failure
+		}
 		return nil, ErrModelProvider
 	}
 	if response.Usage != nil {

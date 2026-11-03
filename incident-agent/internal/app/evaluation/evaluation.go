@@ -3,6 +3,7 @@
 package evaluation
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -78,6 +79,71 @@ func TraceQueries(results []telemetry.Result) []telemetry.Query {
 		}
 	}
 	return queries
+}
+
+// fixedTraces and fixedMetric make up the fixed flow's queries beyond the log sweep. Together
+// with the sweep over the five services they use the same query steps an investigation has.
+const (
+	fixedTraces = 3
+	fixedMetric = "rpc_error_rate"
+)
+
+// FixedFlow is the baseline an investigation is compared with: the program picks the queries
+// by a rule that knows nothing about the case, and the same model writes the report under
+// the same prompt, limits and checks. Everything but Decide comes from the model decider.
+type FixedFlow struct {
+	*investigation.ModelDecider
+}
+
+// Decide never spends a model call on choosing a query.
+func (f FixedFlow) Decide(ctx context.Context, view investigation.View) (json.RawMessage, error) {
+	if view.Phase == "SYNTHESIZING" {
+		return f.ModelDecider.Decide(ctx, view)
+	}
+	if sweep := investigation.SweepDecision(view); sweep != nil {
+		return sweep, nil
+	}
+	decision := investigation.Decision{Kind: "synthesize"}
+	if query := nextFixedQuery(view); query != nil {
+		decision = investigation.Decision{Kind: "query", Query: query}
+	}
+	encoded, err := json.Marshal(decision)
+	if err != nil {
+		return nil, investigation.ErrInvalidDecision
+	}
+	return encoded, nil
+}
+
+// nextFixedQuery is one error rate, then the traces of the most severe log records.
+func nextFixedQuery(view investigation.View) *telemetry.Query {
+	seen := map[string]bool{}
+	metric := false
+	for _, entry := range view.Evidence {
+		metric = metric || entry.Query.Metric == fixedMetric
+		if entry.Query.Kind == "trace" {
+			seen[entry.Query.TraceID] = true
+		}
+	}
+	if !metric {
+		return &telemetry.Query{Kind: "metrics", Service: view.Request.Service, Metric: fixedMetric}
+	}
+	if len(seen) >= fixedTraces {
+		return nil
+	}
+	for _, severity := range []string{"ERROR", "WARN", ""} {
+		for _, entry := range view.Evidence {
+			if entry.Query.Kind != "logs" || !entry.Query.Notable {
+				continue
+			}
+			for _, record := range entry.Records {
+				if record.TraceID == "" || seen[record.TraceID] || (severity != "" && record.Fields["severity_text"] != severity) {
+					continue
+				}
+				return &telemetry.Query{Kind: "trace", Service: entry.Query.Service, TraceID: record.TraceID}
+			}
+		}
+	}
+	return nil
 }
 
 var leakPattern = regexp.MustCompile(`(?i)failpoint|\bfault|inject|barrier|mutation|testtrade|\bT[0-9]{1,2}\b|\bC[1-3]\b`)
@@ -176,8 +242,26 @@ func Derive(bundle telemetry.Bundle, dropKinds []string) (telemetry.Bundle, erro
 	return telemetry.NewBundle("replay", bundle.UpstreamSHA, kept)
 }
 
+// Flows name who picked the queries in an outcome.
+const (
+	FlowAgent = "agent"
+	FlowFixed = "fixed"
+)
+
+// CallRecord says how one model call went and which records it showed the model. It holds
+// record handles and fixed codes only, never the prompt or the provider's text.
+type CallRecord struct {
+	Phase       string   `json:"phase"`
+	Seconds     float64  `json:"seconds"`
+	Failure     string   `json:"failure,omitempty"`
+	BusyRetries int      `json:"busy_retries,omitempty"`
+	Shown       []string `json:"shown"`
+}
+
 // Outcome is one investigation's result in a form that can be compared and scored.
 type Outcome struct {
+	Flow          string               `json:"flow"`
+	Calls         []CallRecord         `json:"calls"`
 	Sample        string               `json:"sample"`
 	Attempt       int                  `json:"attempt"`
 	BundleDigest  string               `json:"bundle_digest"`

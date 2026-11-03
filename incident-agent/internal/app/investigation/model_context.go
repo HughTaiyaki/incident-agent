@@ -291,8 +291,17 @@ func recordHighlights(records []telemetry.Record) map[string]bool {
 	return highlights
 }
 
+// decisionsLeft counts what the model can still use: queries while investigating, since
+// the last decisions are kept for the report, and report attempts afterwards.
+func decisionsLeft(view View) int {
+	if view.Phase == "SYNTHESIZING" {
+		return max(0, maxDecisions-view.Step)
+	}
+	return max(0, lastInvestigationStep-view.Step)
+}
+
 func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]byte, int, int, error) {
-	input := modelInput{Request: view.Request, Phase: view.Phase, Feedback: feedbackText(view.Feedback), DecisionsLeft: max(0, 12-view.Step), TokensLeft: view.TokensLeft,
+	input := modelInput{Request: view.Request, Phase: view.Phase, Feedback: feedbackText(view.Feedback), DecisionsLeft: decisionsLeft(view), TokensLeft: view.TokensLeft,
 		Queries: []contextQuery{}, Patterns: []promptPattern{}, Records: []promptRecord{},
 		UncheckedLogs:   unchecked(view, func(q telemetry.Query) bool { return q.Kind == "logs" && q.Severity == "" && q.EventName == "" }),
 		UncheckedTraces: unchecked(view, func(q telemetry.Query) bool { return q.Kind == "traces" })}

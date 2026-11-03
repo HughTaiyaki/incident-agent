@@ -21,6 +21,16 @@ const (
 // maxModelRetries is how many failed model calls one run may try again.
 const maxModelRetries = 2
 
+// maxDecisions bounds one run. The last reportDecisions are kept for the report, so a failed
+// report call can be tried again instead of losing the evidence the run already paid for.
+const (
+	maxDecisions    = 12
+	reportDecisions = 1 + maxModelRetries
+)
+
+// lastInvestigationStep is the last step that may still run a query.
+const lastInvestigationStep = maxDecisions - reportDecisions
+
 // modelRetries is derived from the steps, so a resumed run keeps the count.
 func modelRetries(steps []Step) int {
 	count := 0
@@ -30,6 +40,18 @@ func modelRetries(steps []Step) int {
 		}
 	}
 	return count
+}
+
+// failureDetail labels a failed model call with a fixed code.
+func failureDetail(decideErr, callErr error) string {
+	if callErr != nil {
+		return "TIMEOUT"
+	}
+	var failure *ProviderError
+	if errors.As(decideErr, &failure) {
+		return failure.Code
+	}
+	return "PROVIDER"
 }
 
 // Execute runs sequentially with fixed limits; a failed model call is retried at most maxModelRetries times.
@@ -108,11 +130,11 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		run.Report = Report{Draft: d, RunID: run.ID, StopReason: reason, PolicyVersion: PolicyVersion}
 		return run, nil
 	}
-	for step := cp.NextStep; step <= 12; step++ {
+	for step := cp.NextStep; step <= maxDecisions; step++ {
 		if ctx.Err() != nil {
 			return finish(fallback(), "DEADLINE")
 		}
-		if step == 12 && phase != "SYNTHESIZING" {
+		if step > lastInvestigationStep && phase != "SYNTHESIZING" {
 			phase, stopReason = "SYNTHESIZING", "DECISION_LIMIT"
 		}
 		if time.Until(deadline) <= 30*time.Second && phase != "SYNTHESIZING" {
@@ -155,10 +177,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			} else if errors.Is(decideErr, ErrModelContext) {
 				stopReason = "MODEL_CONTEXT_LIMIT"
 			} else {
-				audit.Detail = "PROVIDER"
-				if callErr != nil {
-					audit.Detail = "TIMEOUT"
-				}
+				audit.Detail = failureDetail(decideErr, callErr)
 				// Evidence already paid for should not be lost to one failed call. The retry
 				// reserves its own budget and takes a decision slot, so the limits still hold.
 				retryable := !errors.Is(decideErr, ErrModelOutcomeUnknown)

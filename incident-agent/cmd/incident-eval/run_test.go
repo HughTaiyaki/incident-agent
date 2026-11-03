@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -110,5 +111,42 @@ func TestRejectsBadUsageWithoutSideEffects(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); err == nil {
 		t.Fatal("directory created for invalid input")
+	}
+}
+
+func TestFixedFlowOnlyCallsTheModelForTheReportAndRecordsCalls(t *testing.T) {
+	report := `{"kind":"report","report":{"result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["x"],"next_actions":[],"recovery_assessment":"UNKNOWN"}}`
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		if calls == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprint(w, "secret=private")
+			return
+		}
+		_, _ = fmt.Fprintf(w, `{"choices":[{"finish_reason":"stop","message":{"content":%q}}],"usage":{"prompt_tokens":10,"completion_tokens":5}}`, report)
+	}))
+	defer server.Close()
+	t.Setenv("INCIDENT_MODEL_ENDPOINT", server.URL+"/chat")
+	t.Setenv("INCIDENT_MODEL_NAME", "fake")
+	t.Setenv("INCIDENT_MODEL_CONTEXT_WINDOW", "32000")
+	dir := filepath.Join(t.TempDir(), "s01")
+	writeSample(t, dir)
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), []string{"fixed", "-dir", dir, "-attempts", "1"}, &stdout, &stderr); code != 0 {
+		t.Fatal(code, stderr.String())
+	}
+	// #nosec G304 -- Test-owned path within a temporary directory.
+	data, err := os.ReadFile(filepath.Join(dir, "run-01.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var outcome evaluation.Outcome
+	if err = json.Unmarshal(data, &outcome); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 || outcome.Flow != evaluation.FlowFixed || len(outcome.Calls) != 2 || outcome.Calls[0].Failure != "HTTP_5XX" ||
+		outcome.Calls[1].Phase != "SYNTHESIZING" || len(outcome.Calls[1].Shown) == 0 || strings.Contains(string(data), "private") {
+		t.Fatalf("calls=%d %s", calls, data)
 	}
 }

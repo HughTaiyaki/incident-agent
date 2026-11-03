@@ -406,3 +406,42 @@ func TestReportCallGetsRoomThatQueriesDoNot(t *testing.T) {
 		t.Fatalf("%v", limits)
 	}
 }
+
+// A failed call's reservation is not refunded, so a second report has less room. It must
+// stay inside the run's limit and say what it left out.
+func TestReportRetryStaysInBudgetAndCountsWhatItDrops(t *testing.T) {
+	q := telemetry.Query{Kind: "logs", Service: "order-service"}
+	entry := telemetry.Result{Query: q, Status: "AVAILABLE"}
+	for i := range 24 {
+		entry.Records = append(entry.Records, telemetry.Record{ID: strconv.Itoa(i), Type: "log", Service: "order-service",
+			Fields: map[string]string{"message": strings.Repeat("evidence ", 120) + strconv.Itoa(i)}})
+	}
+	calls := 0
+	decider, err := NewModelDecider(providerFunc(func(context.Context, CompletionRequest) (CompletionResponse, error) {
+		calls++
+		if calls == 1 {
+			return CompletionResponse{}, &ProviderError{Code: "NETWORK"}
+		}
+		return CompletionResponse{Decision: json.RawMessage(`{"kind":"report"}`)}, nil
+	}), "m", 1048576)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = decider.BeginRun(); err != nil {
+		t.Fatal(err)
+	}
+	view := View{RunID: "run", Phase: "SYNTHESIZING", Step: 10, Evidence: []telemetry.Result{entry}}
+	_, err = decider.Decide(t.Context(), view)
+	var failure *ProviderError
+	if !errors.As(err, &failure) || failure.Code != "NETWORK" || !errors.Is(err, ErrModelProvider) {
+		t.Fatal(err)
+	}
+	view.Step = 11
+	if _, err = decider.Decide(t.Context(), view); err != nil {
+		t.Fatal(err)
+	}
+	audit := decider.ModelAudit()
+	if len(audit) != 2 || audit[0].Reserved+audit[1].Reserved > ModelTokenLimit || audit[1].OmittedRecords <= audit[0].OmittedRecords {
+		t.Fatalf("%+v", audit)
+	}
+}

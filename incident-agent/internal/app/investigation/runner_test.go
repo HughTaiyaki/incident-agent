@@ -253,9 +253,12 @@ func TestExecute(t *testing.T) {
 			t.Fatalf("%+v calls=%d", result, calls)
 		}
 	})
-	t.Run("last decision is report only", func(t *testing.T) {
+	t.Run("last decisions are kept for the report", func(t *testing.T) {
 		calls := 0
 		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Phase == "SYNTHESIZING" {
+				return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+			}
 			q := query()
 			q.Limit = v.Step
 			return raw(Decision{Kind: "query", Query: &q}), nil
@@ -263,7 +266,7 @@ func TestExecute(t *testing.T) {
 			calls++
 			return observation(q, fmt.Sprint(calls)), nil
 		}))
-		if calls != 11 || result.Decisions != 12 || result.Report.StopReason != "DECISION_LIMIT" {
+		if calls != lastInvestigationStep || result.Decisions != lastInvestigationStep+1 || result.Report.StopReason != "DECISION_LIMIT" {
 			t.Fatalf("%+v calls=%d", result, calls)
 		}
 	})
@@ -412,6 +415,26 @@ func TestExecute(t *testing.T) {
 		}))
 		if modelRetries(result.Steps) != maxModelRetries || result.Report.StopReason == "DECIDER_UNAVAILABLE" || result.Steps[1].Detail != "PROVIDER" {
 			t.Fatal(result)
+		}
+	})
+	t.Run("failed report call after a full investigation is tried again", func(t *testing.T) {
+		reports := 0
+		result, _ := Execute(t.Context(), request(), decideFunc(func(_ context.Context, v View) (json.RawMessage, error) {
+			if v.Phase == "SYNTHESIZING" {
+				reports++
+				if reports <= maxModelRetries {
+					return nil, &ProviderError{Code: "TRUNCATED"}
+				}
+				return raw(Decision{Kind: "report", Report: ptr(fallback())}), nil
+			}
+			q := query()
+			q.Limit = v.Step
+			return raw(Decision{Kind: "query", Query: &q}), nil
+		}), queryFunc(func(_ context.Context, q telemetry.Query, _ *telemetry.Budget) (telemetry.Result, error) {
+			return observation(q, fmt.Sprint(q.Limit)), nil
+		}))
+		if reports != reportDecisions || result.Decisions != maxDecisions || result.Report.StopReason != "DECISION_LIMIT" || result.Steps[lastInvestigationStep].Detail != "TRUNCATED" {
+			t.Fatalf("%+v reports=%d", result, reports)
 		}
 	})
 	t.Run("call with unknown outcome is not sent again", func(t *testing.T) {
