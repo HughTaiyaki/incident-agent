@@ -1,6 +1,6 @@
 # 任务 0014：先帮人排查，再提高定位能力
 
-日期：2026-11-04。状态：**工程部分已完成，人工辅助对照等确认。** 接续[任务 0013](0013-evidence-and-baseline.md)和[新场景验收](../docs/reports/0013-new-scenario-acceptance.md)。
+日期：2026-11-04。状态：**工程部分已完成，用户单人试做人工辅助对照，结果只算观察。** 接续[任务 0013](0013-evidence-and-baseline.md)和[新场景验收](../docs/reports/0013-new-scenario-acceptance.md)。
 
 ## 目标
 
@@ -16,7 +16,7 @@
 | 2 | 有界指标覆盖 | 已实现 |
 | 3 | 知识与观测冲突 | 已实现 |
 | 4 | 报告事实约束 | 已实现，只查得了数字和“没有错误” |
-| 5 | 小规模人工辅助对照 | [方案](../docs/evaluation/human-assist-comparison.md)等确认参与者 |
+| 5 | 小规模人工辅助对照 | [方案](../docs/evaluation/human-assist-comparison.md)，用户单人试做 |
 | 6 | 调用定位逐步增强 | 未开始 |
 | 7 | 噪声先整理再降权 | 未开始 |
 
