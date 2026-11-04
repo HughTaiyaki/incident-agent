@@ -341,7 +341,7 @@ func investigate(ctx context.Context, dir string, attempts int, thinking, relati
 				return err
 			}
 		}
-		decider.UseFacts(system.FactsText())
+		decider.UseKnowledge(system.FactsText(), system.Expectations)
 		if relations {
 			decider.UseRelations()
 		}

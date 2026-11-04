@@ -24,12 +24,21 @@ var profileVersion = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$`)
 
 // Fact kinds separate what a system's records mean. None of them can say what happened in a
 // run: that a duplicate request finished with no impact can only come from that run's evidence.
-var factKinds = []string{"service_map", "field_meaning", "business_outcome", "event_meaning", "error_code", "deadline"}
+var factKinds = []string{"service_map", "field_meaning", "business_outcome", "business_contract", "event_meaning", "error_code", "deadline"}
 
 // Fact is one operator-written explanation of this system's records.
 type Fact struct {
 	Kind string `json:"kind"`
 	Text string `json:"text"`
+}
+
+// CallExpectation is what documentation says a caller allows for one call. It is compared with
+// what the spans recorded and never replaces them: a mismatch is itself a finding.
+type CallExpectation struct {
+	Operation  string `json:"operation"`
+	Caller     string `json:"caller"`
+	ExpectedMs int64  `json:"expected_ms"`
+	Source     string `json:"source"`
 }
 
 // SystemProfile is everything the agent knows about the system under investigation beyond its
@@ -41,6 +50,8 @@ type SystemProfile struct {
 	Services     []string `json:"services"`
 	Environments []string `json:"environments"`
 	Facts        []Fact   `json:"facts"`
+	// Expectations may be empty.
+	Expectations []CallExpectation `json:"expectations,omitempty"`
 }
 
 // ParseProfile accepts only a complete profile: a typo must not silently drop knowledge.
@@ -73,6 +84,12 @@ func ParseProfile(data []byte) (SystemProfile, error) {
 	for _, fact := range profile.Facts {
 		if !slices.Contains(factKinds, fact.Kind) || !safeText(fact.Text, maxProfileFactText) || !utf8.ValidString(fact.Text) {
 			return SystemProfile{}, errors.New("invalid system profile: bad fact")
+		}
+	}
+	for _, expectation := range profile.Expectations {
+		if !safeText(expectation.Operation, 200) || !slices.Contains(profile.Services, expectation.Caller) ||
+			expectation.ExpectedMs < 1 || expectation.ExpectedMs > 600000 || !safeText(expectation.Source, 500) {
+			return SystemProfile{}, errors.New("invalid system profile: bad expectation")
 		}
 	}
 	return profile, nil

@@ -29,12 +29,15 @@ When evidence supports an account or further queries cannot help, return {"kind"
 const relationInstructions = `call_relations are computed by the program from span durations and parent links, one entry per call across services. They state what each side recorded, not why.
 callee_end_after_caller_ms above 0 means the callee was still running after its caller had ended. An error the callee records after that point may be a result of the caller ending, so do not present it as the cause unless a record shows that.
 longest_child is where the most recorded time inside the callee went. If it is small next to callee_ms, the records do not say where the time went: say which side took the time and that the reason is unknown.
+deadline_conflict means the caller stopped far from the documented expected_deadline_ms: give both numbers, say they disagree and that the configuration in effect needs checking, and do not pick a reason. Never state a documented number as what happened.
 timing_unreliable means the two clocks disagree: compare durations only. A missing caller or callee means that side left no record, which does not show what it did.
 You may cite caller_span and callee_span as evidence IDs.
 `
 
 // coverageInstructions is sent only with coverage.
 const coverageInstructions = `coverage is measured by the program and lists what this run did not see. If any count is above 0, do not write that no errors occurred or that all calls succeeded: say what was checked and that the rest was not. Zero counts mean no known gap, not proof that nothing is missing.
+metrics holds what this run's metric queries showed: first, last and max per series; rising means it never fell and ended higher. Read it even when no log or span reports an error: a growing backlog or a full pool may be the only sign. It shows what changed, not why. without_data returned nothing, which is no data, not normal. not_checked and services_without_metrics were never queried: say so rather than assume they were fine.
+Write for the person who investigates next. Add narrowed_to, a claim object: the smallest part of the system the evidence points to, saying which explanations remain open. Each next_actions item names one check and which explanations it tells apart. Say what was not observed as not observed: a missing span does not prove a request never arrived. A duration or percentage you state must come from records, call_relations or metrics.
 `
 
 // instructionsFor assembles the rules, the system's own facts when it has any, and the phase.
@@ -106,6 +109,7 @@ type modelInput struct {
 	Relations        []CallRelation  `json:"call_relations,omitempty"`
 	OmittedRelations int             `json:"omitted_relations,omitempty"`
 	Coverage         *Coverage       `json:"coverage,omitempty"`
+	Metrics          *MetricCoverage `json:"metrics,omitempty"`
 	Records          []promptRecord  `json:"records"`
 	OmittedRecords   int             `json:"omitted_records"`
 	OmittedPatterns  int             `json:"omitted_patterns"`
@@ -133,6 +137,8 @@ var feedbackHints = map[string]string{
 	reportRejected + ":CITATION": reportRejected + ": every evidence_ids list must be non-empty and name records shown from successful queries, without duplicates. Move anything without a record to unknowns.",
 	reportRejected + ":TIMELINE": reportRejected + ": each timeline at must equal the at of a record cited by that item, and items must be in time order.",
 	reportRejected + ":TEXT":     reportRejected + ": text must be non-empty, without credentials or control characters.",
+	reportRejected + ":NUMBER":   reportRejected + ": a duration or percentage in a fact or the hypothesis matches nothing recorded. Use the recorded value, or move it to unknowns.",
+	reportRejected + ":ABSENCE":  reportRejected + ": a fact or the hypothesis says there were no errors, but coverage shows parts of the system were not seen. Say what was checked and that the rest was not.",
 }
 
 func feedbackText(code string) string {
@@ -315,10 +321,11 @@ func recordHighlights(records []telemetry.Record) map[string]bool {
 // decisionsLeft counts what the model can still use: queries while investigating, since
 // the last decisions are kept for the report, and report attempts afterwards.
 func decisionsLeft(view View) int {
+	limit := max(view.DecisionLimit, maxDecisions)
 	if view.Phase == "SYNTHESIZING" {
-		return max(0, maxDecisions-view.Step)
+		return max(0, limit-view.Step)
 	}
-	return max(0, lastInvestigationStep-view.Step)
+	return max(0, limit-reportDecisions-view.Step)
 }
 
 func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]byte, int, int, error) {
@@ -423,6 +430,12 @@ func buildCountedInput(view View, limit int, count func(string, []byte) int) ([]
 		input.Coverage = &counted
 		if !fits(limit) {
 			input.Coverage = nil
+		}
+		// Metrics are small next to what they summarize, and may be the only sign of a fault.
+		metrics := measureMetrics(view)
+		input.Metrics = &metrics
+		if !fits(limit) {
+			input.Metrics = nil
 		}
 		// Warnings are often the only trace of what happened and are few, while one trace
 		// brings dozens of spans, so taking turns between queries can crowd them out.

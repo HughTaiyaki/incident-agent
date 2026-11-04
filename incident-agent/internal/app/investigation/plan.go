@@ -2,6 +2,7 @@ package investigation
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
 )
@@ -22,9 +23,25 @@ const (
 	FillErrorTrace    = "ERROR_TRACE"
 	FillRetryTrace    = "RETRY_TRACE"
 	FillDefaultTrace  = "DEFAULT_TRACE"
+	FillCalleePool    = "CALLEE_POOL"
 )
 
-const planMetric = "rpc_error_rate"
+const (
+	planMetric = "rpc_error_rate"
+	// planTraces and the pool metrics are bounded so that the plan fits the 16 backend requests
+	// a run may make: 5 log sweeps, 1 search, 4 metrics, 1 cut-off log query, 3 traces, 2 pool.
+	planTraces = 3
+	// PlannedDecisionLimit lets every allowed backend request happen and still leaves the
+	// report its decisions. Planned queries cost no model call, so model limits do not move.
+	PlannedDecisionLimit = telemetry.MaxBackendRequests + 1 + reportDecisions
+)
+
+// planCoreMetrics are checked on the service in the request: slow calls and work piling up
+// may be the only sign of a fault, with nothing in the logs.
+var planCoreMetrics = []string{"rpc_latency_p95", "workflow_backlog", "workflow_oldest_age"}
+
+// planPoolMetrics are checked on the service that a failed call points to.
+var planPoolMetrics = []string{"db_pool_utilization", "db_connection_wait_rate"}
 
 // PlannedDecision is the next step of the hybrid flow: the same log sweep and error-rate check
 // every time plus a trace search, then the remaining query steps spent on gaps the program can
@@ -72,12 +89,20 @@ func NextPlannedQuery(view View) (*telemetry.Query, string) {
 	if !searched {
 		return &telemetry.Query{Kind: "traces", Service: view.Request.Service}, ""
 	}
+	for _, name := range planCoreMetrics {
+		if !metricAsked(view.Evidence, view.Request.Service, name) {
+			return &telemetry.Query{Kind: "metrics", Service: view.Request.Service, Metric: name}, ""
+		}
+	}
 	// A cut-off sweep may have lost the errors behind routine events. Once per run, so that
 	// a noisy system still leaves a step for opening a trace.
 	for _, entry := range view.Evidence {
 		if entry.Query.Kind == "logs" && entry.Query.Notable && entry.Quality.Truncated && !asked {
 			return &telemetry.Query{Kind: "logs", Service: entry.Query.Service, Severity: "ERROR"}, FillTruncatedLogs
 		}
+	}
+	if len(opened) >= planTraces {
+		return plannedPoolQuery(view)
 	}
 	fromLogs := func(pick func(telemetry.Record) bool, reason string) (*telemetry.Query, string) {
 		for _, entry := range view.Evidence {
@@ -115,7 +140,34 @@ func NextPlannedQuery(view View) (*telemetry.Query, string) {
 	if query, reason := fromLogs(severeRecord, FillSevereLog); query != nil {
 		return query, reason
 	}
-	return fromLogs(func(telemetry.Record) bool { return true }, FillDefaultTrace)
+	if query, reason := fromLogs(func(telemetry.Record) bool { return true }, FillDefaultTrace); query != nil {
+		return query, reason
+	}
+	return plannedPoolQuery(view)
+}
+
+func metricAsked(evidence []telemetry.Result, service, metric string) bool {
+	return slices.ContainsFunc(evidence, func(entry telemetry.Result) bool {
+		return entry.Query.Metric == metric && entry.Query.Service == service
+	})
+}
+
+// plannedPoolQuery looks at the connections of the service a failed call points to, or of the
+// service in the request when no call failed.
+func plannedPoolQuery(view View) (*telemetry.Query, string) {
+	service := view.Request.Service
+	for _, relation := range CallRelations(view.Evidence) {
+		if relation.failed && relation.Callee != "" && slices.Contains(view.Request.Services, relation.Callee) {
+			service = relation.Callee
+			break
+		}
+	}
+	for _, name := range planPoolMetrics {
+		if !metricAsked(view.Evidence, service, name) {
+			return &telemetry.Query{Kind: "metrics", Service: service, Metric: name}, FillCalleePool
+		}
+	}
+	return nil, ""
 }
 
 // openedSevereTrace reports whether a trace behind a warning or error is already open.

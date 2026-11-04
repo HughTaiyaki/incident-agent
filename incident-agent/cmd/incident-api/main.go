@@ -149,7 +149,7 @@ func loadDeps(getenv func(string) string) (*httpapi.Deps, func(), error) {
 			LogSweep: true,
 			Model:    model, Window: window, ProviderID: worker.ProviderIdentity(endpoint, profile),
 			TelemetryID: worker.TelemetryIdentity(prometheus, loki, jaeger), Services: system.Services, Environments: system.Environments,
-			Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version,
+			Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version, Expectations: system.Expectations,
 		},
 	}
 	return deps, func() { _ = store.Close() }, nil

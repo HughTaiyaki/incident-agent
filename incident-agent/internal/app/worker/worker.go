@@ -32,9 +32,10 @@ type Job struct {
 	ProviderID  string `json:"provider_id"`
 	// Flow says who chooses the queries. SystemFacts is the system's knowledge exactly as
 	// the run started with it, so recovery cannot change what the model is told.
-	Flow           string `json:"flow,omitempty"`
-	SystemFacts    string `json:"system_facts,omitempty"`
-	ProfileVersion string `json:"profile_version,omitempty"`
+	Flow           string                          `json:"flow,omitempty"`
+	SystemFacts    string                          `json:"system_facts,omitempty"`
+	ProfileVersion string                          `json:"profile_version,omitempty"`
+	Expectations   []investigation.CallExpectation `json:"expectations,omitempty"`
 }
 
 // Factory verifies frozen configuration and returns per-run dependencies.

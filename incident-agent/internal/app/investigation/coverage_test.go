@@ -2,6 +2,8 @@ package investigation
 
 import (
 	"encoding/json"
+	"reflect"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -82,4 +84,90 @@ func TestCoverageShowsWarningsAheadOfBulkSpans(t *testing.T) {
 	if decoded.Coverage != nil || decoded.Records[0].ID == "late" {
 		t.Fatalf("coverage applied without being enabled: %+v", decoded.Coverage)
 	}
+}
+
+func metricEntry(service, metric string, values ...float64) telemetry.Result {
+	entry := telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: service, Metric: metric}}
+	for _, value := range values {
+		v := value
+		entry.Records = append(entry.Records, telemetry.Record{Type: "metric", Service: service, Value: &v, Fields: map[string]string{"metric_key": metric, "step": "outbox"}})
+	}
+	return entry
+}
+
+func TestMeasureMetricsSeparatesSeenEmptyAndUnchecked(t *testing.T) {
+	view := View{Request: Request{Service: "front", Services: []string{"front", "back"}}, Evidence: []telemetry.Result{
+		metricEntry("front", "workflow_oldest_age", 10, 20, 30, 40), metricEntry("front", "rpc_error_rate", 0, 0.2, 0.1), metricEntry("front", "workflow_backlog"),
+	}}
+	got := measureMetrics(view)
+	if len(got.Signals) != 2 || !got.Signals[0].Rising || got.Signals[0].Metric != "workflow_oldest_age" || got.Signals[0].First != 10 || got.Signals[0].Last != 40 || got.Signals[0].Labels != "step=outbox" {
+		t.Fatalf("%+v", got.Signals)
+	}
+	if got.Signals[1].Rising || got.Signals[1].Max != 0.2 {
+		t.Fatalf("fell and came back must not read as rising: %+v", got.Signals[1])
+	}
+	if !reflect.DeepEqual(got.WithoutData, []string{"front/workflow_backlog"}) || !reflect.DeepEqual(got.ServicesWithoutMetrics, []string{"back"}) {
+		t.Fatalf("%+v", got)
+	}
+	if !slices.Contains(got.NotChecked, "front/db_pool_utilization") || slices.Contains(got.NotChecked, "front/workflow_backlog") {
+		t.Fatalf("%+v", got.NotChecked)
+	}
+	many := View{Request: Request{Service: "front"}}
+	for i := range metricSignalLimit + 2 {
+		entry := metricEntry("front", "rpc_error_rate", 1)
+		entry.Records[0].Fields["peer"] = strconv.Itoa(i)
+		many.Evidence = append(many.Evidence, entry)
+	}
+	if got = measureMetrics(many); len(got.Signals) != metricSignalLimit || got.OmittedSignals != 2 {
+		t.Fatalf("%d %d", len(got.Signals), got.OmittedSignals)
+	}
+}
+
+func TestCheckClaims(t *testing.T) {
+	spans := telemetry.Result{Query: telemetry.Query{Kind: "trace"}, Records: []telemetry.Record{span("s", "a", "", 0, 1203)}}
+	message := telemetry.Result{Query: telemetry.Query{Kind: "logs"}, Records: []telemetry.Record{logWith("m", "WARN", "gave up after 30s")}}
+	rate := 0.6
+	metric := telemetry.Result{Query: telemetry.Query{Kind: "metrics"}, Records: []telemetry.Record{{Type: "metric", Value: &rate, Fields: map[string]string{}}}}
+	expectations := []CallExpectation{{ExpectedMs: 800}}
+	gap := telemetry.Result{Status: "UNAVAILABLE", Query: telemetry.Query{Kind: "trace"}}
+	clean := []telemetry.Result{spans, message, metric}
+	for _, tt := range []struct {
+		name, text string
+		evidence   []telemetry.Result
+		want       string
+	}{
+		{"recorded duration rounded", "the call took about 1.2 s", clean, ""},
+		{"recorded in another unit", "it ran 1203 ms", clean, ""},
+		{"documented expectation", "documentation expects 800 ms", clean, ""},
+		{"number from a message", "it gave up after 30 s", clean, ""},
+		{"percentage from a metric", "the error rate was 60%", clean, ""},
+		{"made-up duration", "the call took 45 s", clean, "NUMBER"},
+		{"made-up percentage", "the error rate was 90%", clean, "NUMBER"},
+		{"plain words are not units", "3 services and 2 steps", clean, ""},
+		{"absence with a known gap", "there were no errors in the window", append(clean[:3:3], gap), "ABSENCE"},
+		{"absence kept to what was shown", "no errors in the records shown", append(clean[:3:3], gap), ""},
+		{"absence with nothing known missing", "no errors in the window", clean, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			draft := Draft{Facts: []Claim{{Text: tt.text}}}
+			if got := CheckClaims(draft, tt.evidence, expectations); got != tt.want {
+				t.Fatalf("%q", got)
+			}
+			primary := Draft{Primary: &Hypothesis{Claim: Claim{Text: tt.text}}}
+			if got := CheckClaims(primary, tt.evidence, expectations); got != tt.want {
+				t.Fatalf("primary %q", got)
+			}
+		})
+	}
+	t.Run("what still fails is dropped", func(t *testing.T) {
+		m, err := NewModelDecider(providerFunc(nil), "m", 16384)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m.UseCoverage()
+		kept := dropFailedClaims(Draft{Result: "DIAGNOSED", Facts: []Claim{{Text: "took 45 s"}, {Text: "took 1.2 s"}}, Primary: &Hypothesis{Claim: Claim{Text: "took 45 s"}}}, m, clean)
+		if len(kept.Facts) != 1 || kept.Primary != nil || kept.Result != "INCONCLUSIVE" {
+			t.Fatalf("%+v", kept)
+		}
+	})
 }

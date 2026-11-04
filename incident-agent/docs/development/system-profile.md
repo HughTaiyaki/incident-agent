@@ -15,8 +15,9 @@ Agent 对被诊断系统的了解都放在一份版本化的配置档里，不�
 | `services` | 允许调查的服务，1 至 5 个 |
 | `environments` | 允许调查的环境 |
 | `facts` | 解释这个系统记录的说明，可以为空 |
+| `expectations` | 文档记载的调用期限和来源，可以省略。只用来和记录比较，不代表实际发生的情况 |
 
-`facts` 的 `kind` 只能是 `service_map`、`field_meaning`、`business_outcome`、`event_meaning`、`error_code`、`deadline`。
+`facts` 的 `kind` 只能是 `service_map`、`field_meaning`、`business_outcome`、`business_contract`、`event_meaning`、`error_code`、`deadline`。
 
 **配置档只能解释记录，不能代替本次事实。** 比如“1062 是重复键”可以写，“这次重复请求正常完成、没有影响”不能写，后者必须由本次证据证明。提示词会告诉模型这些说明不是证据。
 
@@ -33,9 +34,9 @@ Agent 对被诊断系统的了解都放在一份版本化的配置档里，不�
 | 值 | 查询 | 报告输入 |
 | --- | --- | --- |
 | `agent`（默认） | 程序先扫全部服务日志，之后由模型选 | 现有内容 |
-| `hybrid` | 程序扫日志、查指标和 Trace，再按证据缺口补查，不靠模型选 | 加上[调用关系](../reports/0013-call-relations-comparison.md)和覆盖情况，先放不同种类的警告 |
+| `hybrid` | 程序扫日志，查错误率、延迟、积压和 Trace，再按证据缺口补查，不靠模型选 | 加上[调用关系](../reports/0013-call-relations-comparison.md)、指标摘要和覆盖情况，先放不同种类的警告；校验时长、百分比和“没有错误” |
 
-默认仍是 `agent`。`hybrid` 在[三组对照](../reports/0013-hybrid-flow-comparison.md)里成绩最好，但补查规则是看同一批样本设计的，还没用新场景验收，所以需要显式开启。
+默认仍是 `agent`。`hybrid` 是开发主线，但[新场景验收](../reports/0013-new-scenario-acceptance.md)没有通过，所以需要显式开启。这不代表 `agent` 更可靠。
 
 ## 还和商城绑定的部分
 

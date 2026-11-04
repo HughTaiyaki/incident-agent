@@ -1,5 +1,5 @@
 {
-  "version": "goframeshop-2f25dc5",
+  "version": "goframeshop-2f25dc5-v2",
   "source": "GoFrame mall at upstream 2f25dc5a6fd10cca19323389d39586ff794526f3",
   "services": [
     "gateway-h5",
@@ -31,11 +31,41 @@
     },
     {
       "kind": "error_code",
-      "text": "Error 1062 on a database write inside CreateOrder means a concurrent submit of the same request lost the race and is answered with the existing order."
+      "text": "MySQL Error 1062 is a duplicate-key error."
+    },
+    {
+      "kind": "business_contract",
+      "text": "CreateOrder is designed to absorb a duplicate submit of the same request; whether that happened to a given request, and what it returned, must come from records."
     },
     {
       "kind": "deadline",
-      "text": "A record saying context deadline exceeded on an inventory call means order-service's 800 ms deadline passed, so the outcome is unknown and the worker retries."
+      "text": "Documentation expects order-service to allow inventory calls 800 ms and payment provider calls 2 s. These are expectations, not what happened: durations come from records. A record saying context deadline exceeded means the caller stopped waiting, so the outcome is unknown to it and the worker retries."
+    }
+  ],
+  "expectations": [
+    {
+      "operation": "inventory.v1.InventoryService/ReserveInventory",
+      "caller": "order-service",
+      "expected_ms": 800,
+      "source": "app/order/internal/clients/clients.go InventoryTimeout at upstream 2f25dc5"
+    },
+    {
+      "operation": "inventory.v1.InventoryService/ReleaseInventory",
+      "caller": "order-service",
+      "expected_ms": 800,
+      "source": "app/order/internal/clients/clients.go InventoryTimeout at upstream 2f25dc5"
+    },
+    {
+      "operation": "provider.v1.PaymentProvider/ClosePayment",
+      "caller": "order-service",
+      "expected_ms": 2000,
+      "source": "app/order/internal/clients/clients.go ProviderTimeout at upstream 2f25dc5"
+    },
+    {
+      "operation": "provider.v1.PaymentProvider/CreatePayment",
+      "caller": "order-service",
+      "expected_ms": 2000,
+      "source": "app/order/internal/clients/clients.go ProviderTimeout at upstream 2f25dc5"
     }
   ]
 }

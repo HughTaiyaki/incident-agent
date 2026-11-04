@@ -11,9 +11,11 @@ import (
 
 // Telemetry policy version and upper bounds apply to every query adapter.
 const (
-	PolicyVersion    = "telemetry-v2.1/adapter-v1"
-	MaxResponseBytes = 2 << 20
-	MaxRecords       = 200
+	// MaxBackendRequests is how many backend requests one run may make.
+	MaxBackendRequests = 16
+	PolicyVersion      = "telemetry-v2.1/adapter-v1"
+	MaxResponseBytes   = 2 << 20
+	MaxRecords         = 200
 )
 
 var (

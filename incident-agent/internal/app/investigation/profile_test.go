@@ -20,7 +20,7 @@ func mallProfile(t *testing.T) SystemProfile {
 	return profile
 }
 
-// Moving the knowledge out of the code must not change a single character the model sees.
+// Pins what the model is told with the mall profile, so a change to it is always deliberate.
 func TestMallProfileReproducesTheEvaluatedInstructions(t *testing.T) {
 	facts := mallProfile(t).FactsText()
 	for phase, file := range map[string]string{"INVESTIGATING": "goframeshop-instructions-investigating.txt", "SYNTHESIZING": "goframeshop-instructions-synthesizing.txt"} {
@@ -72,6 +72,8 @@ func TestParseProfileRejectsIncompleteOrUnsafeInput(t *testing.T) {
 		"unknown kind":     strings.Replace(valid, `"error_code"`, `"what_happened"`, 1),
 		"empty fact":       strings.Replace(valid, `"text":"t"`, `"text":" "`, 1),
 		"control text":     strings.Replace(valid, `"text":"t"`, `"text":"t\u0007"`, 1),
+		"bad expectation":  strings.Replace(valid, `"facts"`, `"expectations":[{"operation":"o","caller":"z","expected_ms":1,"source":"s"}],"facts"`, 1),
+		"zero expectation": strings.Replace(valid, `"facts"`, `"expectations":[{"operation":"o","caller":"a","expected_ms":0,"source":"s"}],"facts"`, 1),
 	} {
 		if _, err := ParseProfile([]byte(input)); err == nil {
 			t.Errorf("%s accepted", name)

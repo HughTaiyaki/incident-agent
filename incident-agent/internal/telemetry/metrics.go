@@ -6,6 +6,12 @@ import (
 	"strconv"
 )
 
+// MetricCatalog lists the metrics an investigation can query.
+func MetricCatalog() []string {
+	return []string{"order_error_rate", "rpc_error_rate", "rpc_latency_p95", "workflow_backlog", "workflow_oldest_age",
+		"db_pool_utilization", "db_connection_wait_rate", "db_connection_wait_seconds_rate", "payment_confirmation_delay_p95"}
+}
+
 // MetricExpression builds only reviewed templates, with fixed grouping and selectors.
 func MetricExpression(q Query) (string, error) {
 	for _, value := range []string{q.Service, q.Environment, q.Peer, q.Pool, q.WorkflowStep} {

@@ -79,6 +79,23 @@ func (s *session) audits() []investigation.ModelCall {
 	sort.Slice(calls, func(i, j int) bool { return calls[i].Step < calls[j].Step })
 	return calls
 }
+
+// DecisionLimit raises the run's limit only for the flow whose extra steps cost no model call.
+func (d *durableDecider) DecisionLimit() int {
+	if d.job.Flow == investigation.FlowHybrid {
+		return investigation.PlannedDecisionLimit
+	}
+	return 12
+}
+
+// CheckClaims applies the report checks that go with the hybrid flow.
+func (d *durableDecider) CheckClaims(draft investigation.Draft, evidence []telemetry.Result) string {
+	if d.job.Flow != investigation.FlowHybrid {
+		return ""
+	}
+	return investigation.CheckClaims(draft, evidence, d.job.Expectations)
+}
+
 func (d *durableDecider) ModelAudit() []investigation.ModelCall {
 	d.session.mu.Lock()
 	defer d.session.mu.Unlock()
@@ -116,7 +133,7 @@ func (d *durableDecider) Decide(ctx context.Context, view investigation.View) (j
 	if err != nil {
 		return nil, err
 	}
-	m.UseFacts(d.job.SystemFacts)
+	m.UseKnowledge(d.job.SystemFacts, d.job.Expectations)
 	if hybrid {
 		m.UseRelations()
 		m.UseCoverage()

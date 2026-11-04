@@ -3,6 +3,7 @@ package investigation
 import (
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hughtaiyaki/incident-agent/internal/telemetry"
@@ -36,8 +37,12 @@ type CallRelation struct {
 	CalleeEndAfterCallerMs *int64     `json:"callee_end_after_caller_ms,omitempty"`
 	TimingUnreliable       bool       `json:"timing_unreliable,omitempty"`
 	LongestChild           *ChildTime `json:"longest_child,omitempty"`
-	at                     time.Time
-	failed                 bool
+	// ExpectedDeadlineMs is documentation, not observation. DeadlineConflict says the caller
+	// ran out of time far from it, which only tells a person what to go and check.
+	ExpectedDeadlineMs *int64 `json:"expected_deadline_ms,omitempty"`
+	DeadlineConflict   bool   `json:"deadline_conflict,omitempty"`
+	at                 time.Time
+	failed             bool
 }
 
 func spanMs(d time.Duration) int64 { return d.Milliseconds() }
@@ -172,5 +177,28 @@ func CallRelations(evidence []telemetry.Result) []CallRelation {
 		}
 		return a.at.Compare(b.at)
 	})
+	return relations
+}
+
+// deadlineTolerance keeps ordinary timer slack from reading as a conflict.
+const deadlineTolerance = 4
+
+// compareWithExpectations adds documented deadlines to the relations they describe.
+func compareWithExpectations(relations []CallRelation, expectations []CallExpectation) []CallRelation {
+	for i := range relations {
+		relation := &relations[i]
+		for _, expectation := range expectations {
+			if relation.Operation != expectation.Operation || relation.Caller != expectation.Caller || relation.CallerMs == nil {
+				continue
+			}
+			expected := expectation.ExpectedMs
+			relation.ExpectedDeadlineMs = &expected
+			difference := *relation.CallerMs - expected
+			if difference < 0 {
+				difference = -difference
+			}
+			relation.DeadlineConflict = strings.Contains(relation.CallerStatus, "deadline") && difference > expected/deadlineTolerance
+		}
+	}
 	return relations
 }

@@ -85,7 +85,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, err)
 		return 2
 	}
-	decider.UseFacts(system.FactsText())
+	decider.UseKnowledge(system.FactsText(), system.Expectations)
 	// Reserve the name before any paid call; no retries can silently overwrite a previous run.
 	// #nosec G304 -- Operator-selected CLI path, not model or telemetry input.
 	out, err := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)

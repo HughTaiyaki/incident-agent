@@ -181,6 +181,9 @@ func ValidateReport(d Draft, evidence []telemetry.Result) error {
 	if d.Primary != nil && !hypothesisValid(*d.Primary) {
 		return errReportCitation
 	}
+	if d.NarrowedTo != nil && !claimValid(*d.NarrowedTo) {
+		return errReportCitation
+	}
 	for _, h := range d.Alternatives {
 		if !hypothesisValid(h) {
 			return errReportCitation

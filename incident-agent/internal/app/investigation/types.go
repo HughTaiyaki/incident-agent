@@ -10,7 +10,7 @@ import (
 )
 
 // PolicyVersion identifies the Harness guard and execution policy.
-const PolicyVersion = "harness-v15"
+const PolicyVersion = "harness-v16"
 
 // MaxEvidenceBytes bounds saved evidence and derived log summaries.
 const MaxEvidenceBytes = 2 << 20
@@ -55,7 +55,9 @@ type View struct {
 	TokensLeft int `json:"-"`
 	// Relations is also the model decider's own context.
 	Relations []CallRelation `json:"-"`
-	Coverage  bool           `json:"-"`
+	// DecisionLimit is this run's limit, which the hybrid flow raises.
+	DecisionLimit int  `json:"decision_limit,omitempty"`
+	Coverage      bool `json:"-"`
 }
 
 // Decision permits exactly one query or report, never arbitrary commands or URLs.
@@ -91,9 +93,12 @@ type Draft struct {
 	Timeline     []TimelineItem `json:"timeline"`
 	Primary      *Hypothesis    `json:"primary_hypothesis,omitempty"`
 	Alternatives []Hypothesis   `json:"alternatives"`
-	Unknowns     []string       `json:"unknowns"`
-	NextActions  []string       `json:"next_actions"`
-	Recovery     string         `json:"recovery_assessment"`
+	// NarrowedTo is how far the evidence narrows the search, which helps whoever continues
+	// even when the cause stays open.
+	NarrowedTo  *Claim   `json:"narrowed_to,omitempty"`
+	Unknowns    []string `json:"unknowns"`
+	NextActions []string `json:"next_actions"`
+	Recovery    string   `json:"recovery_assessment"`
 }
 
 // Report adds Harness-controlled identity and stopping metadata to a draft.

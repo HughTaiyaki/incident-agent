@@ -42,6 +42,11 @@ func modelRetries(steps []Step) int {
 	return count
 }
 
+// claimChecker checks what a report says against what the run recorded, beyond its citations.
+type claimChecker interface {
+	CheckClaims(Draft, []telemetry.Result) string
+}
+
 // failureDetail labels a failed model call with a fixed code.
 func failureDetail(decideErr, callErr error) string {
 	if callErr != nil {
@@ -83,7 +88,11 @@ func Execute(ctx context.Context, request Request, decider Decider, querier Quer
 // A save failure stops immediately; it must never turn into a completed report.
 func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier, save func(context.Context, Checkpoint) error) (Run, error) {
 	policy, err := ValidateRequest(cp.Run.Request)
-	if err != nil || decider == nil || querier == nil || cp.Schema != 1 || cp.Policy != PolicyVersion || cp.NextStep < 1 || cp.NextStep > 13 || cp.Run.ID == "" || cp.Run.DeadlineAt.IsZero() || cp.Repeated == nil || cp.Seen == nil {
+	limit := maxDecisions
+	if tuned, ok := decider.(interface{ DecisionLimit() int }); ok {
+		limit = tuned.DecisionLimit()
+	}
+	if err != nil || decider == nil || querier == nil || cp.Schema != 1 || cp.Policy != PolicyVersion || cp.NextStep < 1 || cp.NextStep > limit+1 || cp.Run.ID == "" || cp.Run.DeadlineAt.IsZero() || cp.Repeated == nil || cp.Seen == nil {
 		return Run{}, ErrInvalidInput
 	}
 	if model, ok := decider.(interface{ BeginRun() error }); ok {
@@ -94,7 +103,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 	run, request, deadline := cp.Run, cp.Run.Request, cp.Run.DeadlineAt
 	ctx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
-	budget := telemetry.RestoreBudget(16, run.BackendRequests, nil)
+	budget := telemetry.RestoreBudget(telemetry.MaxBackendRequests, run.BackendRequests, nil)
 	if durable, ok := querier.(interface {
 		Budget(context.Context) *telemetry.Budget
 	}); ok {
@@ -130,11 +139,11 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 		run.Report = Report{Draft: d, RunID: run.ID, StopReason: reason, PolicyVersion: PolicyVersion}
 		return run, nil
 	}
-	for step := cp.NextStep; step <= maxDecisions; step++ {
+	for step := cp.NextStep; step <= limit; step++ {
 		if ctx.Err() != nil {
 			return finish(fallback(), "DEADLINE")
 		}
-		if step > lastInvestigationStep && phase != "SYNTHESIZING" {
+		if step > limit-reportDecisions && phase != "SYNTHESIZING" {
 			phase, stopReason = "SYNTHESIZING", "DECISION_LIMIT"
 		}
 		if time.Until(deadline) <= 30*time.Second && phase != "SYNTHESIZING" {
@@ -144,7 +153,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			return Run{}, err
 		}
 		// Deep copy isolates maps, slices, pointers and all frozen evidence from the decider.
-		data, err := json.Marshal(View{RunID: run.ID, Request: request, Phase: phase, Step: step, Evidence: run.Evidence, Feedback: feedback, LogPatterns: run.LogPatterns})
+		data, err := json.Marshal(View{DecisionLimit: limit, RunID: run.ID, Request: request, Phase: phase, Step: step, Evidence: run.Evidence, Feedback: feedback, LogPatterns: run.LogPatterns})
 		if err != nil {
 			return Run{}, errors.New("cannot encode decision view")
 		}
@@ -181,7 +190,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 				// Evidence already paid for should not be lost to one failed call. The retry
 				// reserves its own budget and takes a decision slot, so the limits still hold.
 				retryable := !errors.Is(decideErr, ErrModelOutcomeUnknown)
-				if retryable && ctx.Err() == nil && step < 12 && modelRetries(run.Steps) < maxModelRetries {
+				if retryable && ctx.Err() == nil && step < limit && modelRetries(run.Steps) < maxModelRetries {
 					audit.Outcome = "MODEL_RETRY"
 					run.Steps = append(run.Steps, audit)
 					continue
@@ -216,7 +225,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			audit.Outcome, feedback = "DECISION_REJECTED", "DECISION_REJECTED"
 			audit.Detail = decisionRejection(raw)
 			run.Steps = append(run.Steps, audit)
-			if reportRejections >= maxReportRejections || step == 12 {
+			if reportRejections >= maxReportRejections || step == limit {
 				return finish(salvage(rejected, run.Evidence), "REPORT_INVALID")
 			}
 			continue
@@ -225,7 +234,13 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			noProgress++
 		} else if decision.Kind == "report" {
 			groundTimeline(decision.Report, run.Evidence)
-			if err = ValidateReport(*decision.Report, run.Evidence); err == nil {
+			err = ValidateReport(*decision.Report, run.Evidence)
+			if checker, ok := decider.(claimChecker); ok && err == nil {
+				if code := checker.CheckClaims(*decision.Report, run.Evidence); code != "" {
+					err = reportRejection{reason: code}
+				}
+			}
+			if err == nil {
 				audit.Outcome = "REPORT_ACCEPTED"
 				run.Steps = append(run.Steps, audit)
 				return finish(*decision.Report, stopReason)
@@ -238,8 +253,12 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 				audit.Detail, feedback = rejection.reason, reportRejected+":"+rejection.reason
 			}
 			run.Steps = append(run.Steps, audit)
-			if reportRejections >= maxReportRejections || step == 12 {
-				return finish(salvage(rejected, run.Evidence), "REPORT_INVALID")
+			if reportRejections >= maxReportRejections || step == limit {
+				kept := salvage(rejected, run.Evidence)
+				if checker, ok := decider.(claimChecker); ok {
+					kept = dropFailedClaims(kept, checker, run.Evidence)
+				}
+				return finish(kept, "REPORT_INVALID")
 			}
 			phase, stopReason = "SYNTHESIZING", "REPORT_REPAIRED"
 			continue
@@ -247,7 +266,7 @@ func Resume(ctx context.Context, cp Checkpoint, decider Decider, querier Querier
 			reportRejections++
 			audit.Outcome, feedback = "QUERY_NOT_ALLOWED", "QUERY_NOT_ALLOWED"
 			run.Steps = append(run.Steps, audit)
-			if reportRejections >= maxReportRejections || step == 12 {
+			if reportRejections >= maxReportRejections || step == limit {
 				return finish(salvage(rejected, run.Evidence), stopReason)
 			}
 			continue

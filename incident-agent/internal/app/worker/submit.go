@@ -45,6 +45,7 @@ type Template struct {
 	Flow           string
 	SystemFacts    string
 	ProfileVersion string
+	Expectations   []investigation.CallExpectation
 }
 
 // Submitted reports the run behind an alert ID and whether this call created it.
@@ -94,7 +95,7 @@ func Submit(ctx context.Context, store runstate.Store, template Template, input 
 		Request: investigation.Request{LogSweep: template.LogSweep, Service: input.Service, Services: slices.Clone(template.Services), Environment: input.Environment, Start: start, End: end, Summary: input.Summary},
 		Model:   template.Model, Window: template.Window, ProviderID: template.ProviderID,
 		FixtureDigest: template.FixtureDigest, TelemetryID: template.TelemetryID, InputDigest: telemetry.Hash(canonical),
-		Flow: template.Flow, SystemFacts: template.SystemFacts, ProfileVersion: template.ProfileVersion,
+		Flow: template.Flow, SystemFacts: template.SystemFacts, ProfileVersion: template.ProfileVersion, Expectations: template.Expectations,
 	}
 	id := "inc-" + telemetry.Hash([]byte("manual\x00" + input.AlertID))[:32]
 	err = Enqueue(ctx, store, id, job, maxActive)

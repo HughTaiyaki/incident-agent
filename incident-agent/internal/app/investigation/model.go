@@ -119,20 +119,21 @@ type ModelCall struct {
 
 // ModelDecider owns one run's in-memory accounting. It cannot be reused by another Execute call.
 type ModelDecider struct {
-	reserve   func(context.Context, ModelCall) error
-	exhausted bool
-	mu        sync.Mutex
-	provider  Provider
-	model     string
-	window    int
-	started   bool
-	charged   int
-	calls     []ModelCall
-	tuning    ModelTuning
-	counter   TokenCounter
-	relations bool
-	coverage  bool
-	facts     string
+	reserve      func(context.Context, ModelCall) error
+	exhausted    bool
+	mu           sync.Mutex
+	provider     Provider
+	model        string
+	window       int
+	started      bool
+	charged      int
+	calls        []ModelCall
+	tuning       ModelTuning
+	counter      TokenCounter
+	relations    bool
+	coverage     bool
+	facts        string
+	expectations []CallExpectation
 }
 
 // NewModelDecider creates isolated accounting for one investigation.
@@ -155,8 +156,20 @@ func (m *ModelDecider) UseRelations() { m.relations = true }
 // not see. Only evaluation sets it, until a comparison shows it helps.
 func (m *ModelDecider) UseCoverage() { m.coverage = true }
 
-// UseFacts sets the text from SystemProfile.FactsText, which explains this system's records.
-func (m *ModelDecider) UseFacts(facts string) { m.facts = facts }
+// UseKnowledge sets what the profile says about this system: facts that explain its records,
+// and expectations that are compared with them.
+func (m *ModelDecider) UseKnowledge(facts string, expectations []CallExpectation) {
+	m.facts, m.expectations = facts, expectations
+}
+
+// CheckClaims is the report check that applies when coverage is on. A rejected report gets the
+// usual chance to repair itself.
+func (m *ModelDecider) CheckClaims(draft Draft, evidence []telemetry.Result) string {
+	if !m.coverage {
+		return ""
+	}
+	return CheckClaims(draft, evidence, m.expectations)
+}
 
 func (m *ModelDecider) instructions(phase string) string {
 	text := instructionsFor(phase, m.facts)
@@ -280,7 +293,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 	}
 	view.TokensLeft = ModelTokenLimit - m.charged
 	if m.relations && view.Phase == "SYNTHESIZING" {
-		view.Relations = CallRelations(view.Evidence)
+		view.Relations = compareWithExpectations(CallRelations(view.Evidence), m.expectations)
 	}
 	view.Coverage = m.coverage && view.Phase == "SYNTHESIZING"
 	inputLimit := min(available-output, m.window*3/5-output)

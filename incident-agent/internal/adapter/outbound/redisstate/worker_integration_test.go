@@ -550,7 +550,7 @@ func TestHybridJobChoosesQueriesWithoutTheModelAndSurvivesTakeover(t *testing.T)
 	if after.Status != "COMPLETED" || p.calls != 1 || q.calls <= queriesBefore {
 		t.Fatalf("status=%s model=%d queries=%d->%d", after.Status, p.calls, queriesBefore, q.calls)
 	}
-	if !strings.Contains(p.instructions, "frozen knowledge") || !strings.Contains(p.instructions, "call_relations") || !strings.Contains(p.input, `"coverage":{`) {
+	if !strings.Contains(p.instructions, "frozen knowledge") || !strings.Contains(p.instructions, "call_relations") || !strings.Contains(p.input, `"coverage":{`) || !strings.Contains(p.input, `"metrics":{`) {
 		t.Fatalf("report call: %s\n%s", p.instructions, p.input)
 	}
 }

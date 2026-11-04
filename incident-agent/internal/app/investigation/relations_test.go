@@ -143,3 +143,28 @@ func TestCallRelationsCounterexamples(t *testing.T) {
 		}
 	})
 }
+
+func TestDocumentedDeadlineIsComparedNotBelieved(t *testing.T) {
+	expectations := []CallExpectation{{Operation: "svc/Call", Caller: "a", ExpectedMs: 800}}
+	relationFor := func(callerMs int, status string) CallRelation {
+		got := compareWithExpectations(relationsOf(span("root", "a", "", 0, 5000), span("c", "a", "root", 0, callerMs, failed(status)...), span("s", "b", "c", 1, 2)), expectations)
+		if len(got) != 1 {
+			t.Fatalf("%+v", got)
+		}
+		return got[0]
+	}
+	far := relationFor(8, "context deadline exceeded")
+	if !far.DeadlineConflict || *far.ExpectedDeadlineMs != 800 || *far.CallerMs != 8 {
+		t.Fatalf("%+v", far)
+	}
+	if near := relationFor(801, "context deadline exceeded"); near.DeadlineConflict || near.ExpectedDeadlineMs == nil {
+		t.Fatalf("%+v", near)
+	}
+	if other := relationFor(8, "unavailable"); other.DeadlineConflict {
+		t.Fatalf("a failure unrelated to time is no conflict: %+v", other)
+	}
+	unrelated := compareWithExpectations(relationsOf(span("root", "x", "", 0, 5000), span("c", "x", "root", 0, 8, failed("context deadline exceeded")...), span("s", "b", "c", 1, 2)), expectations)
+	if unrelated[0].ExpectedDeadlineMs != nil {
+		t.Fatalf("%+v", unrelated[0])
+	}
+}

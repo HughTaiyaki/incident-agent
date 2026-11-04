@@ -174,7 +174,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		if !system.Allows(request) {
 			return fail(errors.New("request is outside the system profile"))
 		}
-		job := worker.Job{Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version, Request: request, Model: model, Window: window, FixtureDigest: src.digest, TelemetryID: src.telemetryID, ProviderID: providerID}
+		job := worker.Job{Flow: flow, SystemFacts: system.FactsText(), ProfileVersion: system.Version, Expectations: system.Expectations, Request: request, Model: model, Window: window, FixtureDigest: src.digest, TelemetryID: src.telemetryID, ProviderID: providerID}
 		if err := worker.Enqueue(ctx, store, *id, job, maxActive); err != nil {
 			fail(err)
 			if errors.Is(err, worker.ErrOverloaded) {

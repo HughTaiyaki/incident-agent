@@ -14,8 +14,17 @@ func planView(evidence ...telemetry.Result) View {
 
 func planNext(evidence ...telemetry.Result) (*telemetry.Query, string) {
 	view := planView(evidence...)
-	view.Evidence = append([]telemetry.Result{{Query: telemetry.Query{Kind: "metrics", Metric: planMetric}}, {Query: telemetry.Query{Kind: "traces", Service: "front"}}}, evidence...)
+	view.Evidence = append(plannedPrefix(), evidence...)
 	return NextPlannedQuery(view)
+}
+
+// plannedPrefix is the fixed part of the plan, already done.
+func plannedPrefix() []telemetry.Result {
+	prefix := []telemetry.Result{{Query: telemetry.Query{Kind: "metrics", Service: "front", Metric: planMetric}}, {Query: telemetry.Query{Kind: "traces", Service: "front"}}}
+	for _, name := range planCoreMetrics {
+		prefix = append(prefix, telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: "front", Metric: name}})
+	}
+	return prefix
 }
 
 func planLogs(truncated bool, records ...telemetry.Record) telemetry.Result {
@@ -76,15 +85,48 @@ func TestPlannedQueriesFollowTheEvidence(t *testing.T) {
 		if q == nil || reason != FillDefaultTrace {
 			t.Fatalf("%+v %s", q, reason)
 		}
-		if q, _ = planNext(planLogs(false)); q != nil {
+		if q, reason = planNext(planLogs(false)); q == nil || reason != FillCalleePool || q.Service != "front" {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("core metrics come before traces", func(t *testing.T) {
+		view := planView(telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: "front", Metric: planMetric}}, telemetry.Result{Query: telemetry.Query{Kind: "traces", Service: "front"}},
+			planLogs(false, planLog("warn", "WARN")))
+		q, _ := NextPlannedQuery(view)
+		if q == nil || q.Metric != planCoreMetrics[0] {
+			t.Fatalf("%+v", q)
+		}
+	})
+	t.Run("pool metrics follow the failed call", func(t *testing.T) {
+		view := planView(append(plannedPrefix(), telemetry.Result{Query: telemetry.Query{Kind: "trace", TraceID: "t"}, Records: []telemetry.Record{
+			span("c", "front", "", 0, 3000, "error", "true"), span("s", "back", "c", 1, 100, "error", "true"),
+		}})...)
+		view.Request.Services = []string{"front", "back"}
+		q, reason := NextPlannedQuery(view)
+		if q == nil || q.Service != "back" || q.Metric != planPoolMetrics[0] || reason != FillCalleePool {
+			t.Fatalf("%+v %s", q, reason)
+		}
+	})
+	t.Run("stops once traces and pool are done", func(t *testing.T) {
+		evidence := plannedPrefix()
+		for _, id := range []string{"a", "b", "c"} {
+			evidence = append(evidence, telemetry.Result{Query: telemetry.Query{Kind: "trace", TraceID: id}})
+		}
+		for _, name := range planPoolMetrics {
+			evidence = append(evidence, telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: "front", Metric: name}})
+		}
+		if q, _ := NextPlannedQuery(planView(evidence...)); q != nil {
 			t.Fatalf("%+v", q)
 		}
 	})
 }
 
 func TestPlannedDecisionFinishesWhenNothingIsLeft(t *testing.T) {
-	view := planView(telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "front", Notable: true}},
-		telemetry.Result{Query: telemetry.Query{Kind: "metrics", Metric: planMetric}}, telemetry.Result{Query: telemetry.Query{Kind: "traces", Service: "front"}})
+	evidence := append(plannedPrefix(), telemetry.Result{Query: telemetry.Query{Kind: "logs", Service: "front", Notable: true}})
+	for _, name := range planPoolMetrics {
+		evidence = append(evidence, telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: "front", Metric: name}})
+	}
+	view := planView(evidence...)
 	raw, reason, err := PlannedDecision(view)
 	if err != nil || reason != "" {
 		t.Fatal(err, reason)
@@ -104,7 +146,11 @@ func TestPlanAndRelationsIgnoreServiceNames(t *testing.T) {
 		spans := telemetry.Result{Query: telemetry.Query{Kind: "trace", Service: front, TraceID: "t2"}, Records: []telemetry.Record{
 			span("c", front, "", 0, 800, "error", "true"), span("s", back, "c", 5, 1200),
 		}}
-		return []telemetry.Result{logs, spans, {Query: telemetry.Query{Kind: "metrics", Metric: planMetric}}, {Query: telemetry.Query{Kind: "traces", Service: front}}}
+		evidence := []telemetry.Result{logs, spans, {Query: telemetry.Query{Kind: "metrics", Service: front, Metric: planMetric}}, {Query: telemetry.Query{Kind: "traces", Service: front}}}
+		for _, name := range planCoreMetrics {
+			evidence = append(evidence, telemetry.Result{Query: telemetry.Query{Kind: "metrics", Service: front, Metric: name}})
+		}
+		return evidence
 	}
 	plan := func(front, back string) (string, string) {
 		view := View{RunID: "run", Phase: "INVESTIGATING", Evidence: build(front, back), Request: Request{Service: front, Services: []string{front, back}}}

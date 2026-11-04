@@ -21,9 +21,6 @@ const RequestSummary = "订单交易在该窗口可能出现异常，核查发�
 // maxTraces bounds per-sample trace detail queries.
 const maxTraces = 12
 
-var metrics = []string{"order_error_rate", "rpc_error_rate", "rpc_latency_p95", "workflow_backlog", "workflow_oldest_age",
-	"db_pool_utilization", "db_connection_wait_rate", "db_connection_wait_seconds_rate", "payment_confirmation_delay_p95"}
-
 // Request is what the investigator is told about a sample: a window and nothing else.
 func Request(services []string, environment string, start, end time.Time) investigation.Request {
 	return investigation.Request{Service: "order-service", Services: slices.Clone(services), Environment: environment,
@@ -45,7 +42,7 @@ func PlanQueries(services []string, environment string, start, end time.Time) []
 		add(telemetry.Query{Kind: "logs", Severity: "ERROR"})
 		add(telemetry.Query{Kind: "logs", Severity: "WARN"})
 		add(telemetry.Query{Kind: "traces"})
-		for _, metric := range metrics {
+		for _, metric := range telemetry.MetricCatalog() {
 			add(telemetry.Query{Kind: "metrics", Metric: metric})
 		}
 	}
@@ -152,6 +149,9 @@ type HybridFlow struct {
 	*investigation.ModelDecider
 	Fills []string
 }
+
+// DecisionLimit matches the production hybrid flow.
+func (f *HybridFlow) DecisionLimit() int { return investigation.PlannedDecisionLimit }
 
 // Decide never spends a model call on choosing a query.
 func (f *HybridFlow) Decide(ctx context.Context, view investigation.View) (json.RawMessage, error) {
