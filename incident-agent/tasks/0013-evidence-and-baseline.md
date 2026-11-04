@@ -1,6 +1,6 @@
 # 任务 0013：可信对照与证据计算（方案，待审查）
 
-日期：2026-11-03。状态：**第 1 阶段已完成；第 2 阶段已完成，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件，用户抽检无异议；第 3 阶段和工程接入已完成，[混合流程满足决策规则](../docs/reports/0013-hybrid-flow-comparison.md)，用户抽检无异议；第 4 阶段进行中：用户决定由隔离会话出题，规则见[预先写定](../docs/evaluation/0013-stage4-preregistration.md)。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
+日期：2026-11-03。状态：**第 1 阶段已完成；第 2 阶段已完成，[结果](../docs/reports/0013-call-relations-comparison.md)满足启用条件，用户抽检无异议；第 3 阶段和工程接入已完成，[混合流程满足决策规则](../docs/reports/0013-hybrid-flow-comparison.md)，用户抽检无异议；第 4 阶段已跑完，[混合流程没有通过新场景验收](../docs/reports/0013-new-scenario-acceptance.md)（故障样本 2/8），线上默认保持 `agent`，等用户抽检。** [结果报告](../docs/reports/0013-fixed-flow-comparison.md)：动态 Agent 22/25，固定流程 20/25，未达到保留标准。用户已确认：固定采集作候选默认，动态模式保留，混合方案待验证。对应[路线 P5](../docs/development/production-roadmap.md)，接续[任务 0012](0012-fixed-fault-evaluation.md)。本文只写计划，下面的预期都未经实测。
 
 ## 1. 为什么换方向
 

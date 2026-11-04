@@ -8,7 +8,7 @@
 
 | 要解决的问题 | 首选入口 | 何时继续深入 |
 | --- | --- | --- |
-| 下一步怎样提升诊断效果 | [任务 0013：可信对照与证据计算](../tasks/0013-evidence-and-baseline.md)，实验规则见[第 1 阶段](evaluation/0013-preregistration.md)、[第 2 阶段](evaluation/0013-stage2-preregistration.md)、[第 3 阶段](evaluation/0013-stage3-preregistration.md)、[第 4 阶段](evaluation/0013-stage4-preregistration.md)，结果见[固定流程对照](reports/0013-fixed-flow-comparison.md)、[调用关系对照](reports/0013-call-relations-comparison.md)、[三组对照](reports/0013-hybrid-flow-comparison.md) | 第 4 阶段进行中 |
+| 下一步怎样提升诊断效果 | [任务 0013：可信对照与证据计算](../tasks/0013-evidence-and-baseline.md)，实验规则见[第 1 阶段](evaluation/0013-preregistration.md)、[第 2 阶段](evaluation/0013-stage2-preregistration.md)、[第 3 阶段](evaluation/0013-stage3-preregistration.md)、[第 4 阶段](evaluation/0013-stage4-preregistration.md)，结果见[固定流程对照](reports/0013-fixed-flow-comparison.md)、[调用关系对照](reports/0013-call-relations-comparison.md)、[三组对照](reports/0013-hybrid-flow-comparison.md) | 第 4 阶段未通过，[结果](reports/0013-new-scenario-acceptance.md)待抽检 |
 | 诊断效果如何 | [固定故障集评测结果](reports/0012-fixed-fault-evaluation.md) | 方案见[任务 0012](../tasks/0012-fixed-fault-evaluation.md)，标准见[评测方案](evaluation/plan.md) |
 | 本轮开发改了什么 | [任务 0011 部署与运维](reports/0011-deployment-operations.md) | DeepSeek 联调见[任务 0009 报告](reports/0009-online-investigation.md#deepseek-联调)，API 见[任务 0010 报告](reports/0010-http-entry.md) |
 | 如何部署和值班 | [部署指南](operations/deployment.md)、[值班手册](operations/runbook.md) | 取舍和验收状态见[任务 0011](../tasks/0011-deployment-operations.md) |
