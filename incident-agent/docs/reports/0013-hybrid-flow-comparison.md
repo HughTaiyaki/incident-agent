@@ -1,6 +1,6 @@
 # 任务 0013 第 3 阶段：固定、动态、混合三组对照
 
-日期：2026-11-03。对应[任务 0013](../../tasks/0013-evidence-and-baseline.md)，规则在运行前写入[预先写定](../evaluation/0013-stage3-preregistration.md)（提交 `5dddbcb`）。判分人 Claude，隐藏分组标签，但知道场景真值，不是盲测。用户抽检尚未完成。
+日期：2026-11-03。对应[任务 0013](../../tasks/0013-evidence-and-baseline.md)，规则在运行前写入[预先写定](../evaluation/0013-stage3-preregistration.md)（提交 `5dddbcb`）。判分人 Claude，隐藏分组标签，但知道场景真值，不是盲测。用户随机抽检 10 份（种子 39），并看了混合组 H3、D1、N1 和证据不完整 N1 的定向检查，对判定没有异议。
 
 ## 结论
 
