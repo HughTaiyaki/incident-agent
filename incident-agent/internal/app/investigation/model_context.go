@@ -37,7 +37,7 @@ You may cite caller_span and callee_span as evidence IDs.
 // coverageInstructions is sent only with coverage.
 const coverageInstructions = `coverage is measured by the program and lists what this run did not see. If any count is above 0, do not write that no errors occurred or that all calls succeeded: say what was checked and that the rest was not. Zero counts mean no known gap, not proof that nothing is missing.
 metrics holds what this run's metric queries showed: first, last and max per series; rising means it never fell and ended higher. Read it even when no log or span reports an error: a growing backlog or a full pool may be the only sign. It shows what changed, not why. without_data returned nothing, which is no data, not normal. not_checked and services_without_metrics were never queried: say so rather than assume they were fine.
-Write for the person who investigates next. Add narrowed_to, a claim object: the smallest part of the system the evidence points to, saying which explanations remain open. Each next_actions item names one check and which explanations it tells apart. Say what was not observed as not observed: a missing span does not prove a request never arrived. A duration or percentage you state must come from records, call_relations or metrics.
+Write for the person who investigates next. Add "narrowed_to":{"text":"...","evidence_ids":["record ID"]} inside report, with no claim wrapper: the smallest part of the system the evidence points to, saying which explanations remain open. Each next_actions item names one check and which explanations it tells apart. Say what was not observed as not observed: a missing span does not prove a request never arrived. A duration or percentage you state must come from records, call_relations or metrics.
 `
 
 // instructionsFor assembles the rules, the system's own facts when it has any, and the phase.
@@ -138,6 +138,7 @@ var feedbackHints = map[string]string{
 	reportRejected + ":TIMELINE": reportRejected + ": each timeline at must equal the at of a record cited by that item, and items must be in time order.",
 	reportRejected + ":TEXT":     reportRejected + ": text must be non-empty, without credentials or control characters.",
 	reportRejected + ":NUMBER":   reportRejected + ": a duration or percentage in a fact or the hypothesis matches nothing recorded. Use the recorded value, or move it to unknowns.",
+	reportRejected + ":EVENTS":   reportRejected + ": no log or span was seen in this run, so result must be INCONCLUSIVE: describe what the metrics show in unknowns and say which sources were missing.",
 	reportRejected + ":ABSENCE":  reportRejected + ": a fact or the hypothesis says there were no errors, but coverage shows parts of the system were not seen. Say what was checked and that the rest was not.",
 }
 

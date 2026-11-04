@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -503,5 +504,39 @@ func TestRelationsBeyondTheLimitAreCounted(t *testing.T) {
 	}
 	if len(decoded.Relations) != relationLimit || decoded.OmittedRelations != 3 {
 		t.Fatal(len(decoded.Relations), decoded.OmittedRelations)
+	}
+}
+
+func TestFlattenNarrowedToKeepsTheClaimAndNothingElse(t *testing.T) {
+	report := func(narrowed string) json.RawMessage {
+		return json.RawMessage(`{"kind":"report","report":{"result":"INCONCLUSIVE","facts":[],"timeline":[],"alternatives":[],"unknowns":["x"],"next_actions":[],"recovery_assessment":"UNKNOWN","narrowed_to":` + narrowed + `}}`)
+	}
+	flat := `{"text":"t","evidence_ids":["a"]}`
+	decision, err := decodeDecision(flattenNarrowedTo(report(`{"claim":` + flat + `}`)))
+	if err != nil || decision.Report.NarrowedTo == nil || decision.Report.NarrowedTo.Text != "t" {
+		t.Fatalf("%+v %v", decision, err)
+	}
+	if decision, err = decodeDecision(flattenNarrowedTo(report(flat))); err != nil || decision.Report.NarrowedTo.Text != "t" {
+		t.Fatalf("%+v %v", decision, err)
+	}
+	if _, err = decodeDecision(flattenNarrowedTo(report(`"plain text"`))); err == nil {
+		t.Fatal("a string is not a claim")
+	}
+	for _, input := range []string{`not json`, `{"kind":"synthesize"}`} {
+		if got := flattenNarrowedTo(json.RawMessage(input)); string(got) != input {
+			t.Fatalf("%s", got)
+		}
+	}
+}
+
+func TestSalvageKeepsWhereToLookNext(t *testing.T) {
+	entry := telemetry.Result{Query: telemetry.Query{Kind: "logs"}, Records: []telemetry.Record{{ID: "a", Type: "log", Fields: map[string]string{}}}}
+	entry.Quality.QueryOutcome = "SUCCEEDED"
+	kept := salvage(&Draft{Facts: []Claim{{Text: "f", EvidenceIDs: []string{"a"}}}, NarrowedTo: &Claim{Text: "n", EvidenceIDs: []string{"a"}}, NextActions: []string{"check x"}}, []telemetry.Result{entry})
+	if kept.NarrowedTo == nil || !slices.Contains(kept.NextActions, "check x") {
+		t.Fatalf("%+v", kept)
+	}
+	if kept = salvage(&Draft{NarrowedTo: &Claim{Text: "n", EvidenceIDs: []string{"missing"}}}, []telemetry.Result{entry}); kept.NarrowedTo != nil {
+		t.Fatalf("%+v", kept)
 	}
 }

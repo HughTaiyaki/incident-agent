@@ -350,7 +350,7 @@ func (m *ModelDecider) Decide(ctx context.Context, view View) (json.RawMessage, 
 		m.calls[index].Status = "OUTPUT_TOO_LARGE"
 		return nil, ErrModelProvider
 	}
-	decision := expandCitations(unwrappedReport(response.Decision), view.Evidence)
+	decision := expandCitations(flattenNarrowedTo(unwrappedReport(response.Decision)), view.Evidence)
 	return unmaskQuery(decision, view.Evidence, view.RunID), nil
 }
 
@@ -411,6 +411,35 @@ func unwrappedReport(decision json.RawMessage) json.RawMessage {
 		return decision
 	}
 	return wrapped
+}
+
+// flattenNarrowedTo removes the claim wrapper a model copies from primary_hypothesis. Only the
+// envelope changes: the claim still faces strict decoding and validation.
+func flattenNarrowedTo(decision json.RawMessage) json.RawMessage {
+	var outer map[string]json.RawMessage
+	if json.Unmarshal(decision, &outer) != nil {
+		return decision
+	}
+	var report map[string]json.RawMessage
+	if json.Unmarshal(outer["report"], &report) != nil {
+		return decision
+	}
+	var wrapped struct {
+		Claim json.RawMessage `json:"claim"`
+	}
+	if json.Unmarshal(report["narrowed_to"], &wrapped) != nil || wrapped.Claim == nil {
+		return decision
+	}
+	report["narrowed_to"] = wrapped.Claim
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		return decision
+	}
+	outer["report"] = encoded
+	if encoded, err = json.Marshal(outer); err != nil {
+		return decision
+	}
+	return encoded
 }
 
 // ModelAudit returns detached usage metadata for the final Run artifact.

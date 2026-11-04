@@ -226,6 +226,18 @@ func salvage(rejected *Draft, evidence []telemetry.Result) Draft {
 	if rejected.Primary != nil && len(out.Facts) > 0 && probe(Draft{Primary: rejected.Primary}) {
 		out.Result, out.Primary = "DIAGNOSED", rejected.Primary
 	}
+	if rejected.NarrowedTo != nil && probe(Draft{NarrowedTo: rejected.NarrowedTo}) {
+		out.NarrowedTo = rejected.NarrowedTo
+	}
+	kept := []string{}
+	for _, action := range rejected.NextActions {
+		if safeText(action, 2000) && len(kept) < 10 {
+			kept = append(kept, action)
+		}
+	}
+	if len(kept) > 0 {
+		out.NextActions = kept
+	}
 	if ValidateReport(out, evidence) != nil {
 		return fallback()
 	}

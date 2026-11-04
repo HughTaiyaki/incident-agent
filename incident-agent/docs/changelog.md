@@ -3,7 +3,7 @@
 ## 2026-11-04 · 报告适合人接着查（harness-v16）
 
 - 目标调整：先证明能帮人更快、更有依据地排查，同时压低误导，根因命中率继续记录但不单独决定项目是否有用。详见[任务 0014](../tasks/0014-assist-and-evidence.md)。
-- 混合流程增加有界指标覆盖、`narrowed_to` 和可区分解释的下一步，并校验时长、百分比和“没有错误”。系统说明改写为错误码含义、业务约定和文档预期，配置档新增 `expectations`，记录偏离文档期限时标 `deadline_conflict`。系统说明的改写也影响 `agent` 流程。新增[人工辅助对照方案](evaluation/human-assist-comparison.md)，待确认。
+- 混合流程增加有界指标覆盖、`narrowed_to` 和可区分解释的下一步，并校验时长、百分比和“没有错误”。系统说明改写为错误码含义、业务约定和文档预期，配置档新增 `expectations`，记录偏离文档期限时标 `deadline_conflict`。系统说明的改写也影响 `agent` 流程。没有日志和 Span 时不能下结论。38 份旧样本回归抓到并修复了 3 个工程问题，这轮不是成绩。新增[人工辅助对照方案](evaluation/human-assist-comparison.md)，待确认。
 
 ## 2026-11-04 · 新场景验收未通过
 

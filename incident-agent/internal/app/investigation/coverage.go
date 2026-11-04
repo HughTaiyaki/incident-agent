@@ -212,6 +212,9 @@ func nearly(claimed, recorded float64) bool {
 // percentages that match nothing recorded, and flat claims of no errors over parts of the
 // system this run did not see. Whether a cause follows from its evidence stays with people.
 func CheckClaims(d Draft, evidence []telemetry.Result, expectations []CallExpectation) string {
+	if d.Result == "DIAGNOSED" && !hasEventEvidence(evidence) {
+		return "EVENTS"
+	}
 	claims := []Claim{}
 	if d.Primary != nil {
 		claims = append(claims, d.Primary.Claim)
@@ -223,6 +226,19 @@ func CheckClaims(d Draft, evidence []telemetry.Result, expectations []CallExpect
 		}
 	}
 	return ""
+}
+
+// hasEventEvidence reports whether any log or span was seen. Numbers alone show that something
+// changed, not what happened, so without events a run can describe them but not diagnose.
+func hasEventEvidence(evidence []telemetry.Result) bool {
+	for _, entry := range evidence {
+		for _, record := range entry.Records {
+			if record.Type == "log" || record.Type == "span" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func checkClaim(claim Claim, evidence []telemetry.Result, expectations []CallExpectation) string {
@@ -269,7 +285,9 @@ func recordedNumbers(evidence []telemetry.Result, expectations []CallExpectation
 	for _, entry := range evidence {
 		for _, record := range entry.Records {
 			if record.Value != nil {
+				// Metrics that measure time are in seconds.
 				percents = append(percents, *record.Value)
+				durations = append(durations, *record.Value*1000)
 			}
 			if duration, ok := spanDuration(record); ok && record.Type == "span" {
 				durations = append(durations, float64(duration)/float64(time.Millisecond))
@@ -284,6 +302,11 @@ func recordedNumbers(evidence []telemetry.Result, expectations []CallExpectation
 				}
 				durations = append(durations, value)
 			}
+		}
+	}
+	for _, relation := range CallRelations(evidence) {
+		if relation.CalleeEndAfterCallerMs != nil {
+			durations = append(durations, float64(*relation.CalleeEndAfterCallerMs))
 		}
 	}
 	return durations, percents

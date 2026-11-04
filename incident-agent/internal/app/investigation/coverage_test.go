@@ -141,6 +141,7 @@ func TestCheckClaims(t *testing.T) {
 		{"documented expectation", "documentation expects 800 ms", clean, ""},
 		{"number from a message", "it gave up after 30 s", clean, ""},
 		{"percentage from a metric", "the error rate was 60%", clean, ""},
+		{"metric in seconds", "the oldest item was 94 s old", append(clean[:3:3], telemetry.Result{Query: telemetry.Query{Kind: "metrics"}, Records: []telemetry.Record{{Type: "metric", Value: ptr(94.2), Fields: map[string]string{}}}}), ""},
 		{"made-up duration", "the call took 45 s", clean, "NUMBER"},
 		{"made-up percentage", "the error rate was 90%", clean, "NUMBER"},
 		{"plain words are not units", "3 services and 2 steps", clean, ""},
@@ -159,6 +160,18 @@ func TestCheckClaims(t *testing.T) {
 			}
 		})
 	}
+	t.Run("metrics alone cannot diagnose", func(t *testing.T) {
+		metricsOnly := []telemetry.Result{metric, gap}
+		if got := CheckClaims(Draft{Result: "DIAGNOSED"}, metricsOnly, nil); got != "EVENTS" {
+			t.Fatalf("%q", got)
+		}
+		if got := CheckClaims(Draft{Result: "INCONCLUSIVE"}, metricsOnly, nil); got != "" {
+			t.Fatalf("%q", got)
+		}
+		if got := CheckClaims(Draft{Result: "DIAGNOSED"}, clean, nil); got != "" {
+			t.Fatalf("%q", got)
+		}
+	})
 	t.Run("what still fails is dropped", func(t *testing.T) {
 		m, err := NewModelDecider(providerFunc(nil), "m", 16384)
 		if err != nil {
